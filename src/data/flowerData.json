@@ -1,0 +1,35 @@
+{
+  "stats": {
+    "totalClients": 86,
+    "totalInvoices": 132,
+    "overdueCount": 9,
+    "outstanding": 184500,
+    "totalRevenue": 6850000,
+    "totalQuotations": 54,
+    "quotationValue": 4200000,
+    "totalBills": 41,
+    "billOutstanding": 96000
+  },
+  "topClients": [
+    { "name": "Misty Blooms", "value": 685000 },
+    { "name": "The Grand Wedding Co.", "value": 520000 },
+    { "name": "Lakeview Banquet Hall", "value": 410000 },
+    { "name": "Sri Krishna Events", "value": 365000 },
+    { "name": "Orchid Decorators", "value": 298000 }
+  ],
+  "invoices": [
+    { "no": "JPB-2026-118", "client": "The Grand Wedding Co.", "date": "28-Jun-26", "due": "7 days", "taxable": 42500, "gst": 0, "total": 42500, "status": "Unpaid" },
+    { "no": "JPB-2026-117", "client": "Lakeview Banquet Hall", "date": "25-Jun-26", "due": "Paid", "taxable": 68000, "gst": 0, "total": 68000, "status": "Paid" },
+    { "no": "JPB-2026-116", "client": "Misty Blooms", "date": "21-Jun-26", "due": "Paid", "taxable": 6560, "gst": 0, "total": 6560, "status": "Paid" },
+    { "no": "JPB-2026-115", "client": "Sri Krishna Events", "date": "18-Jun-26", "due": "Overdue", "taxable": 31200, "gst": 0, "total": 31200, "status": "Overdue" },
+    { "no": "JPB-2026-114", "client": "Orchid Decorators", "date": "12-Jun-26", "due": "Paid", "taxable": 22800, "gst": 0, "total": 22800, "status": "Paid" },
+    { "no": "JPB-2026-113", "client": "Green Garden Resort", "date": "05-Jun-26", "due": "Paid", "taxable": 15400, "gst": 0, "total": 15400, "status": "Paid" }
+  ],
+  "estimates": [
+    { "no": "QT-2026-054", "client": "The Grand Wedding Co.", "date": "30-Jun-26", "total": 125000, "status": "sent" },
+    { "no": "QT-2026-053", "client": "Lakeview Banquet Hall", "date": "27-Jun-26", "total": 96000, "status": "accepted" },
+    { "no": "QT-2026-052", "client": "Sri Krishna Events", "date": "22-Jun-26", "total": 48500, "status": "accepted" },
+    { "no": "QT-2026-051", "client": "New Horizon Convention", "date": "19-Jun-26", "total": 210000, "status": "sent" },
+    { "no": "QT-2026-050", "client": "Orchid Decorators", "date": "14-Jun-26", "total": 32000, "status": "rejected" }
+  ]
+}
