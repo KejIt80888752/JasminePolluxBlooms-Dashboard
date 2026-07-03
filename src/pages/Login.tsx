@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Flower2 } from "lucide-react";
+import raiseLogo from "../assets/the-raise-logo.png";
 
 const DEMO = [
   { role: "Super Admin", user: "admin" },
@@ -82,7 +83,10 @@ export default function Login() {
           {/* Footer */}
           <div style={{ marginTop:20, paddingTop:16, borderTop:"1px solid rgba(255,255,255,.08)", position:"relative" }}>
             <div style={{ fontSize:10, color:"#d8b4cf" }}>GSTIN <span style={{ color:"#ec4899" }}>29AAXFJ0042J1ZZ</span></div>
-            <div style={{ fontSize:10, color:"#8a6b83", marginTop:2 }}>© 2026 Jasmine Pollux Blooms</div>
+            <div style={{ fontSize:10, color:"#8a6b83", marginTop:2, marginBottom:10 }}>© 2026 Jasmine Pollux Blooms</div>
+            <div style={{ fontSize:9, color:"#8a6b83", textTransform:"uppercase", letterSpacing:".08em", marginBottom:4 }}>Powered by</div>
+            <img src={raiseLogo} alt="The Raise" style={{ height:18, width:"auto", objectFit:"contain", opacity:.9, display:"block" }}/>
+            <div style={{ fontSize:9, color:"#8a6b83", marginTop:4 }}>KEJ IT</div>
           </div>
         </div>
 

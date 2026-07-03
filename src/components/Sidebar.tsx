@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Receipt, FileText, Boxes, UserPlus, UserCog, LogOut, X, Flower2,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import raiseLogo from '../assets/the-raise-logo.png';
 
 const NAV = [
   { id:'overview',  icon:LayoutDashboard, label:'Dashboard'  },
@@ -78,6 +79,11 @@ export default function Sidebar({ page, setPage, open, onClose }: Props) {
         <div className="px-4 py-3 border-t border-white/5 shrink-0 text-center">
           <p className="text-[9px] text-pink-200/40 uppercase tracking-widest">Jasmine Pollux Blooms</p>
           <p className="text-[9px] text-pink-200/30 mt-0.5">Bangalore, Karnataka</p>
+        </div>
+        <div className="px-4 py-3 border-t border-white/5 shrink-0 text-center">
+          <p className="text-[9px] text-pink-200/40 uppercase tracking-widest mb-1">Powered by</p>
+          <img src={raiseLogo} alt="The Raise" className="h-4 object-contain opacity-70 mx-auto mb-1" />
+          <p className="text-[9px] text-pink-200/40">KEJ IT</p>
         </div>
       </aside>
 
