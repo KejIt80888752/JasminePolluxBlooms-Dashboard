@@ -3,21 +3,21 @@ import { Plus, MessageCircle, Trash2, FileText, CheckCircle, AlertCircle, Downlo
 import InvoicePDF from '../components/InvoicePDF';
 import flowerData from '../data/flowerData.json';
 
-type Item = { id:number; desc:string; qty:number; unit:string; rate:number; gst:number; };
+type Item = { id:number; desc:string; ordQty:number; avlQty:number; unit:string; rate:number; };
 type View = 'form' | 'list';
 
 /* ── Flower catalog auto-fill ── */
-const PRODUCTS: Record<string, Omit<Item,'id'|'qty'>> = {
-  'Anthurium Medium': { desc:'Anthurium Medium', unit:'Nos', rate:50, gst:0 },
-  'Anthurium Small':  { desc:'Anthurium Small',  unit:'Nos', rate:40, gst:0 },
-  'Anthurium Mini':   { desc:'Anthurium Mini',   unit:'Nos', rate:30, gst:0 },
-  'Red Rose':         { desc:'Red Rose',         unit:'Nos', rate:12, gst:0 },
-  'White Rose':       { desc:'White Rose',       unit:'Nos', rate:18, gst:0 },
-  'Marigold':         { desc:'Marigold Yellow',  unit:'Kg',  rate:80, gst:0 },
-  'Jasmine (Malli)':  { desc:'Jasmine (Malli)',  unit:'Kg',  rate:600,gst:0 },
-  'White Lily':       { desc:'White Lily',       unit:'Stems',rate:45,gst:0 },
-  'Orchid Stem':      { desc:'Orchid Stem',      unit:'Stems',rate:65,gst:0 },
-  'Decoration Charges': { desc:'Decoration / Event Setup Charges', unit:'Job', rate:5000, gst:0 },
+const PRODUCTS: Record<string, Omit<Item,'id'|'ordQty'|'avlQty'>> = {
+  'Anthurium Medium': { desc:'Anthurium Medium', unit:'Nos', rate:50 },
+  'Anthurium Small':  { desc:'Anthurium Small',  unit:'Nos', rate:40 },
+  'Anthurium Mini':   { desc:'Anthurium Mini',   unit:'Nos', rate:30 },
+  'Red Rose':         { desc:'Red Rose',         unit:'Nos', rate:12 },
+  'White Rose':       { desc:'White Rose',       unit:'Nos', rate:18 },
+  'Marigold':         { desc:'Marigold Yellow',  unit:'Kg',  rate:80 },
+  'Jasmine (Malli)':  { desc:'Jasmine (Malli)',  unit:'Kg',  rate:600 },
+  'White Lily':       { desc:'White Lily',       unit:'Stems', rate:45 },
+  'Orchid Stem':      { desc:'Orchid Stem',      unit:'Stems', rate:65 },
+  'Decoration Charges': { desc:'Decoration / Event Setup Charges', unit:'Job', rate:5000 },
 };
 
 const SAVED_INVOICES = flowerData.invoices.map(i => ({
@@ -29,12 +29,11 @@ const sc: Record<string,string> = { Paid:'badge-green', Unpaid:'badge-yellow', O
 const fmt  = (n:number) => n.toLocaleString('en-IN');
 const fmtR = (n:number) => '₹'+fmt(n);
 
-function newItem(): Item { return { id:Date.now()+Math.random(), desc:'', qty:1, unit:'Nos', rate:0, gst:0 }; }
+function newItem(): Item { return { id:Date.now()+Math.random(), desc:'', ordQty:1, avlQty:1, unit:'Nos', rate:0 }; }
 
 function calcItem(it:Item) {
-  const base = it.qty * it.rate;
-  const gstAmt = base * it.gst / 100;
-  return { base, gstAmt, total: base + gstAmt };
+  const total = it.avlQty * it.rate;
+  return { total };
 }
 
 export default function BillingInvoice() {
@@ -44,13 +43,16 @@ export default function BillingInvoice() {
   const [showPDF, setShowPDF] = useState(false);
   const [pdfInvoiceData, setPdfInvoiceData] = useState<any>(null);
 
-  const [invNo,   setInvNo]   = useState(`JPB-2026-${String(SAVED_INVOICES.length+1).padStart(3,'0')}`);
-  const [invDate, setInvDate] = useState(new Date().toISOString().slice(0,10));
-  const [party,   setParty]   = useState('');
-  const [gstin,   setGstin]   = useState('');
-  const [addr,    setAddr]    = useState('');
+  const [billNo,   setBillNo]   = useState(`JPB-2026-${String(SAVED_INVOICES.length+1).padStart(3,'0')}`);
+  const [invDate,  setInvDate]  = useState(new Date().toISOString().slice(0,10));
+  const [dDate,    setDDate]    = useState(new Date().toISOString().slice(0,10));
+  const [reference,setReference]= useState('');
+  const [party,    setParty]    = useState('');
+  const [deliveryLoc, setDeliveryLoc] = useState('');
+  const [transport, setTransport] = useState(0);
 
-  const totals = items.reduce((acc,it)=>{ const c=calcItem(it); return { base:acc.base+c.base, gst:acc.gst+c.gstAmt, total:acc.total+c.total }; },{ base:0, gst:0, total:0 });
+  const itemsTotal = items.reduce((s,it)=>s+calcItem(it).total,0);
+  const grandTotal = itemsTotal + (transport || 0);
 
   const updateItem = (id:number, field:keyof Item, val:string|number) =>
     setItems(prev=>prev.map(it=>it.id===id?{...it,[field]:val}:it));
@@ -63,36 +65,39 @@ export default function BillingInvoice() {
 
   const addItem = () => setItems(p=>[...p,newItem()]);
   const delItem = (id:number) => setItems(p=>p.filter(it=>it.id!==id));
-  const clearForm = () => { setItems([newItem()]); setParty(''); setGstin(''); setAddr(''); };
+  const clearForm = () => { setItems([newItem()]); setParty(''); setDeliveryLoc(''); setReference(''); setTransport(0); };
 
   const saveInvoice = () => {
-    if(!party){ alert('Enter Buyer Name'); return; }
-    setSaved(p=>[{ no:invNo, client:party, taxable:Math.round(totals.base), gst:Math.round(totals.gst), total:Math.round(totals.total), date:new Date(invDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}).replace(/ /g,'-'), due:'7 days', status:'Unpaid' },...p]);
+    if(!party){ alert('Enter Customer Name'); return; }
+    setSaved(p=>[{ no:billNo, client:party, taxable:Math.round(itemsTotal), gst:0, total:Math.round(grandTotal), date:new Date(invDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}).replace(/ /g,'-'), due:'7 days', status:'Unpaid' },...p]);
     setView('list');
     clearForm();
-    setInvNo(`JPB-2026-${String(saved.length+2).padStart(3,'0')}`);
+    setBillNo(`JPB-2026-${String(saved.length+2).padStart(3,'0')}`);
   };
 
   const openPDF = () => {
     setPdfInvoiceData({
-      invoiceNo: invNo, invoiceDate: new Date(invDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}),
-      buyerName: party||'—', buyerGstin: gstin, buyerAddress: addr,
-      items: items.filter(it=>it.desc).map(it=>({ desc:it.desc, qty:it.qty, unit:it.unit, rate:it.rate, gst:it.gst })),
+      billNo, date: new Date(invDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}),
+      dDate: new Date(dDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}),
+      reference, buyerName: party||'—', deliveryLocation: deliveryLoc,
+      items: items.filter(it=>it.desc).map(it=>({ desc:it.desc, ordQty:it.ordQty, avlQty:it.avlQty, unit:it.unit, rate:it.rate })),
+      transport,
     });
     setShowPDF(true);
   };
 
   const openPDFFromList = (r: typeof saved[0]) => {
     setPdfInvoiceData({
-      invoiceNo: r.no, invoiceDate: r.date, buyerName: r.client, buyerAddress: '', buyerGstin: '',
-      items: [{ desc:'Flower Supply / Decoration', qty:1, unit:'Job', rate:r.taxable, gst:0 }],
+      billNo: r.no, date: r.date, dDate: r.date, reference: '', buyerName: r.client, deliveryLocation: '',
+      items: [{ desc:'Flower Supply / Decoration', ordQty:1, avlQty:1, unit:'Job', rate:r.taxable }],
+      transport: 0,
     });
     setShowPDF(true);
   };
 
   const sendWhatsApp = () => {
-    if(!party){ alert('Enter Buyer Name'); return; }
-    const msg = encodeURIComponent(`Dear ${party},\n\nPlease find your Invoice:\nInvoice No: ${invNo}\nDate: ${invDate}\nAmount: ₹${fmt(Math.round(totals.total))}\n\nThank you,\nJasmine Pollux Blooms\n📞 +91 97403 24378`);
+    if(!party){ alert('Enter Customer Name'); return; }
+    const msg = encodeURIComponent(`Dear ${party},\n\nPlease find your Order Form:\nBill No: ${billNo}\nDate: ${invDate}\nAmount: ₹${fmt(Math.round(grandTotal))}\n\nThank you,\nJasmine Pollux Blooms\n📞 +91 97403 24378`);
     window.open(`https://wa.me/?text=${msg}`, '_blank');
   };
 
@@ -117,7 +122,7 @@ export default function BillingInvoice() {
       <div className="card">
         <div className="overflow-x-auto">
           <table className="tbl w-full">
-            <thead><tr><th>Invoice No</th><th>Client</th><th>Amount</th><th>Date</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Bill No</th><th>Customer</th><th>Amount</th><th>Date</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
               {saved.map((r,i)=>(
                 <tr key={i}>
@@ -149,8 +154,8 @@ export default function BillingInvoice() {
     <div className="page-enter" style={{paddingBottom:80}}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-bold text-gray-800">Billing — New Invoice</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Flower supply / event decoration invoice</p>
+          <h2 className="text-lg font-bold text-gray-800">Billing — New Order Form</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Flower supply / event decoration order form</p>
         </div>
         <div className="flex items-center gap-2">
           <button className="btn-brand flex items-center gap-2 text-xs" onClick={()=>setView('form')}><Plus size={13}/> New Invoice</button>
@@ -159,28 +164,32 @@ export default function BillingInvoice() {
       </div>
 
       <div className="card mb-4 p-5">
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-4 gap-4 mb-4">
           <div>
-            <label className="form-label">INVOICE NO</label>
-            <input className="inp font-mono font-bold" value={invNo} onChange={e=>setInvNo(e.target.value)}/>
+            <label className="form-label">BILL NO</label>
+            <input className="inp font-mono font-bold" value={billNo} onChange={e=>setBillNo(e.target.value)}/>
           </div>
           <div>
-            <label className="form-label">INVOICE DATE</label>
+            <label className="form-label">DATE</label>
             <input className="inp" type="date" value={invDate} onChange={e=>setInvDate(e.target.value)}/>
           </div>
-        </div>
-        <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="form-label">BUYER NAME <span className="text-red-500">*</span></label>
+            <label className="form-label">D-DATE (Delivery)</label>
+            <input className="inp" type="date" value={dDate} onChange={e=>setDDate(e.target.value)}/>
+          </div>
+          <div>
+            <label className="form-label">REFERENCE</label>
+            <input className="inp" placeholder="Optional reference" value={reference} onChange={e=>setReference(e.target.value)}/>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="form-label">CUSTOMER <span className="text-red-500">*</span></label>
             <input className="inp" placeholder="Customer / Company name" value={party} onChange={e=>setParty(e.target.value)}/>
           </div>
           <div>
-            <label className="form-label">GSTIN (optional)</label>
-            <input className="inp font-mono" placeholder="29XXXXXXXXXXXXX1ZX" value={gstin} onChange={e=>setGstin(e.target.value.toUpperCase())} maxLength={15}/>
-          </div>
-          <div>
-            <label className="form-label">BILLING ADDRESS</label>
-            <input className="inp" placeholder="Full address with city & pin" value={addr} onChange={e=>setAddr(e.target.value)}/>
+            <label className="form-label">DELIVERY LOCATION</label>
+            <input className="inp" placeholder="Full address with city & pin" value={deliveryLoc} onChange={e=>setDeliveryLoc(e.target.value)}/>
           </div>
         </div>
       </div>
@@ -194,7 +203,7 @@ export default function BillingInvoice() {
           <table style={{width:'100%', borderCollapse:'collapse', minWidth:760}}>
             <thead>
               <tr style={{background:'#fdf2f8'}}>
-                {['Description','Qty','Unit','Rate (₹)','GST%','Amount',''].map(h=>(
+                {['Particulars','Ord Qty','Avl Qty','Unit','Unit Price (₹)','Total',''].map(h=>(
                   <th key={h} style={{textAlign:'left',padding:'8px 12px',fontSize:11,fontWeight:700,color:'#6b7280',borderBottom:'1px solid #f3d9e8',whiteSpace:'nowrap'}}>{h}</th>
                 ))}
               </tr>
@@ -205,24 +214,22 @@ export default function BillingInvoice() {
                 return (
                   <tr key={it.id} style={{borderBottom:'1px solid #f3f4f6'}}>
                     <td style={{padding:'6px 8px', minWidth:220}}>
-                      <input className="inp py-1 text-xs w-full" placeholder="Description (e.g. Anthurium Medium)" value={it.desc}
+                      <input className="inp py-1 text-xs w-full" placeholder="Particulars (e.g. Anthurium Medium)" value={it.desc}
                         onChange={e=>autoFill(it.id,e.target.value)} list="flower-catalog" style={{minWidth:200}}/>
                     </td>
-                    <td style={{padding:'6px 8px', width:65}}>
-                      <input className="inp py-1 text-xs w-full text-center" type="number" value={it.qty} onChange={e=>updateItem(it.id,'qty',parseFloat(e.target.value)||0)} style={{minWidth:55}}/>
+                    <td style={{padding:'6px 8px', width:70}}>
+                      <input className="inp py-1 text-xs w-full text-center" type="number" value={it.ordQty} onChange={e=>updateItem(it.id,'ordQty',parseFloat(e.target.value)||0)} style={{minWidth:60}}/>
+                    </td>
+                    <td style={{padding:'6px 8px', width:70}}>
+                      <input className="inp py-1 text-xs w-full text-center" type="number" value={it.avlQty} onChange={e=>updateItem(it.id,'avlQty',parseFloat(e.target.value)||0)} style={{minWidth:60}}/>
                     </td>
                     <td style={{padding:'6px 8px', width:80}}>
                       <select className="sel py-1 text-xs" value={it.unit} onChange={e=>updateItem(it.id,'unit',e.target.value)} style={{minWidth:70,fontSize:11}}>
-                        {['Nos','Kg','Stems','Mtrs','Bunch','Dozen','Job'].map(u=><option key={u}>{u}</option>)}
+                        {['Nos','Kg','Stems','Mtrs','Bunch','Dozen','Pc','Job'].map(u=><option key={u}>{u}</option>)}
                       </select>
                     </td>
                     <td style={{padding:'6px 8px', width:90}}>
                       <input className="inp py-1 text-xs w-full text-right" type="number" value={it.rate} onChange={e=>updateItem(it.id,'rate',parseFloat(e.target.value)||0)} style={{minWidth:80}}/>
-                    </td>
-                    <td style={{padding:'6px 8px', width:70}}>
-                      <select className="sel py-1 text-xs" value={it.gst} onChange={e=>updateItem(it.id,'gst',parseFloat(e.target.value))} style={{minWidth:65,fontSize:11}}>
-                        {[0,5,12,18].map(g=><option key={g} value={g}>{g}%</option>)}
-                      </select>
                     </td>
                     <td style={{padding:'6px 12px', fontWeight:700, color:'#16a34a', whiteSpace:'nowrap', fontSize:13}}>
                       ₹{fmt(Math.round(total))}
@@ -249,18 +256,16 @@ export default function BillingInvoice() {
           <div className="flex justify-end">
             <div style={{minWidth:280}}>
               <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
-                <span className="text-sm text-gray-500 font-medium">Subtotal</span>
-                <span className="text-sm font-semibold text-gray-700">₹{fmt(Math.round(totals.base))}</span>
+                <span className="text-sm text-gray-500 font-medium">Items Total</span>
+                <span className="text-sm font-semibold text-gray-700">₹{fmt(Math.round(itemsTotal))}</span>
               </div>
-              {totals.gst > 0 && (
-                <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
-                  <span className="text-sm text-gray-500 font-medium">GST</span>
-                  <span className="text-sm font-semibold" style={{color:'#2563eb'}}>₹{fmt(Math.round(totals.gst))}</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between py-1.5 border-b border-gray-50">
+                <span className="text-sm text-gray-500 font-medium">Transport Charges</span>
+                <input className="inp py-1 text-xs text-right" type="number" style={{width:110}} value={transport} onChange={e=>setTransport(parseFloat(e.target.value)||0)}/>
+              </div>
               <div className="flex items-center justify-between pt-3">
                 <span className="font-bold text-gray-800 text-base">Grand Total</span>
-                <span style={{fontSize:22, fontWeight:900, color:'#be185d'}}>₹{fmt(Math.round(totals.total))}</span>
+                <span style={{fontSize:22, fontWeight:900, color:'#be185d'}}>₹{fmt(Math.round(grandTotal))}</span>
               </div>
             </div>
           </div>

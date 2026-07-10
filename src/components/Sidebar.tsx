@@ -1,8 +1,9 @@
 import {
-  LayoutDashboard, Receipt, FileText, Boxes, UserPlus, UserCog, LogOut, X, Flower2,
+  LayoutDashboard, Receipt, FileText, Boxes, UserPlus, UserCog, LogOut, X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import raiseLogo from '../assets/the-raise-logo.png';
+import jpbMark from '../assets/jpb-mark.png';
 
 const NAV = [
   { id:'overview',  icon:LayoutDashboard, label:'Dashboard'  },
@@ -28,11 +29,15 @@ export default function Sidebar({ page, setPage, open, onClose }: Props) {
         style={{ transform: (open || isDesktop()) ? 'translateX(0)' : 'translateX(-100%)' }}
       >
 
+        {/* Floral watermark */}
+        <img src={jpbMark} alt="" aria-hidden="true"
+          style={{ position:'absolute', bottom:70, left:'50%', transform:'translateX(-50%)', width:220, opacity:0.05, pointerEvents:'none', filter:'grayscale(1) brightness(3)' }} />
+
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-16 border-b border-white/7 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-brand flex items-center justify-center shrink-0">
-              <Flower2 size={19} color="#fff" />
+            <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0 p-1">
+              <img src={jpbMark} alt="JPB" className="w-full h-full object-contain" />
             </div>
             <div>
               <p className="text-sm font-bold text-white leading-tight">Jasmine Pollux</p>

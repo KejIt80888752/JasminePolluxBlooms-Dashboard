@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { Flower2 } from "lucide-react";
 import raiseLogo from "../assets/the-raise-logo.png";
+import jpbMark from "../assets/jpb-mark.png";
 
 const DEMO = [
   { role: "Super Admin", user: "admin" },
@@ -32,15 +32,17 @@ export default function Login() {
         {/* ── LEFT PANEL ── */}
         <div style={{ flex:1, background:"#3f1d33", padding:"40px 36px", display:"flex", flexDirection:"column", position:"relative", overflow:"hidden" }}>
           <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 80% 10%,rgba(236,72,153,.22) 0%,transparent 55%)", pointerEvents:"none" }}/>
+          <img src={jpbMark} alt="" aria-hidden="true"
+            style={{ position:"absolute", bottom:-60, right:-60, width:320, opacity:0.06, pointerEvents:"none", filter:"grayscale(1) brightness(3)" }}/>
 
           {/* Brand */}
           <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28, position:"relative" }}>
-            <div style={{ width:54, height:54, borderRadius:12, background:"#be185d", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-              <Flower2 size={28} color="#fff" />
+            <div style={{ width:54, height:54, borderRadius:12, background:"#fff", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, padding:4 }}>
+              <img src={jpbMark} alt="JPB" style={{ width:"100%", height:"100%", objectFit:"contain" }}/>
             </div>
             <div>
               <div style={{ fontSize:17, fontWeight:800, color:"#fff", lineHeight:1.2 }}>Jasmine Pollux Blooms</div>
-              <div style={{ fontSize:10, fontWeight:700, color:"#ec4899", letterSpacing:".1em", textTransform:"uppercase" }}>FRESH FLOWERS &amp; DECOR</div>
+              <div style={{ fontSize:10, fontWeight:700, color:"#ec4899", letterSpacing:".1em", textTransform:"uppercase" }}>FLOWERS WITH CARE</div>
             </div>
           </div>
 
@@ -91,8 +93,10 @@ export default function Login() {
         </div>
 
         {/* ── RIGHT WHITE PANEL ── */}
-        <div style={{ width:400, background:"#fff", padding:"44px 40px", display:"flex", flexDirection:"column", justifyContent:"center", flexShrink:0 }}>
-          <div style={{ fontSize:26, fontWeight:800, color:"#3f1d33", marginBottom:4 }}>Sign In</div>
+        <div style={{ width:400, background:"#fff", padding:"44px 40px", display:"flex", flexDirection:"column", justifyContent:"center", flexShrink:0, position:"relative", overflow:"hidden" }}>
+          <img src={jpbMark} alt="" aria-hidden="true"
+            style={{ position:"absolute", top:-40, right:-50, width:200, opacity:0.05, pointerEvents:"none" }}/>
+          <div style={{ fontSize:26, fontWeight:800, color:"#3f1d33", marginBottom:4, position:"relative" }}>Sign In</div>
           <div style={{ fontSize:13, color:"#8a6b83", marginBottom:28 }}>Access your dashboard</div>
 
           {error && (
