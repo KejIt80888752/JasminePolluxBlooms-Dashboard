@@ -7,7 +7,6 @@ const DEMO = [
   { role: "Super Admin", user: "admin" },
   { role: "Owner", user: "jasmine" },
   { role: "Manager", user: "jasminepolluxblooms@gmail.com" },
-  { role: "Staff", user: "8147219077" },
 ];
 
 export default function Login() {
