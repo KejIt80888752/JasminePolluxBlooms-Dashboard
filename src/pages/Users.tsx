@@ -7,6 +7,7 @@ const sampleUsers = [
   { id: 3, name: 'Ravi Shankar', email: 'ravi@jasminepolluxblooms.in', role: 'Florist', lastLogin: '2026-06-29 17:30', status: 'Active' },
   { id: 4, name: 'Lakshmi Devi', email: 'lakshmi@jasminepolluxblooms.in', role: 'Accounts', lastLogin: '2026-06-28 10:22', status: 'Active' },
   { id: 5, name: 'Vinay Prasad', email: 'vinay@jasminepolluxblooms.in', role: 'Florist', lastLogin: '2026-06-25 16:00', status: 'Inactive' },
+  { id: 6, name: 'Bharath', email: '8147219077 (login)', role: 'Staff', lastLogin: '—', status: 'Active' },
 ];
 
 const roleBadge: Record<string, string> = {
@@ -14,6 +15,7 @@ const roleBadge: Record<string, string> = {
   Manager: 'badge badge-blue',
   Florist: 'badge badge-green',
   Accounts: 'badge badge-orange',
+  Staff: 'badge badge-blue',
   Viewer: 'badge badge-gray',
 };
 

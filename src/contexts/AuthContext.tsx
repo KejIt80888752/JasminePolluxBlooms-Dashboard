@@ -9,7 +9,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const CREDS = {
-  users: ["admin", "jasmine", "jasminepolluxblooms@gmail.com"],
+  users: ["admin", "jasmine", "jasminepolluxblooms@gmail.com", "8147219077"],
   pass: "bloom@2026",
 };
 
