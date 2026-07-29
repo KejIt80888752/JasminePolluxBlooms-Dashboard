@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { Plus, MessageCircle, Trash2, FileText, CheckCircle, AlertCircle, Download } from 'lucide-react';
+import { useState, Fragment } from 'react';
+import { Plus, MessageCircle, Trash2, FileText, CheckCircle, AlertCircle, Download, AlertTriangle } from 'lucide-react';
 import InvoicePDF from '../components/InvoicePDF';
 import flowerData from '../data/flowerData.json';
+import { useInventory } from '../contexts/InventoryContext';
 
-type Item = { id:number; desc:string; ordQty:number; avlQty:number; unit:string; rate:number; };
+type Item = { id:number; code:string; desc:string; ordQty:number; unit:string; rate:number; };
 type View = 'form' | 'list';
+type DocType = 'orderform' | 'invoice';
 
-/* ── Flower catalog auto-fill ── */
-const PRODUCTS: Record<string, Omit<Item,'id'|'ordQty'|'avlQty'>> = {
+/* ── Flower catalog auto-fill by name ── */
+const PRODUCTS: Record<string, Omit<Item,'id'|'ordQty'|'code'>> = {
   'Anthurium Medium': { desc:'Anthurium Medium', unit:'Nos', rate:50 },
   'Anthurium Small':  { desc:'Anthurium Small',  unit:'Nos', rate:40 },
   'Anthurium Mini':   { desc:'Anthurium Mini',   unit:'Nos', rate:30 },
@@ -20,6 +22,15 @@ const PRODUCTS: Record<string, Omit<Item,'id'|'ordQty'|'avlQty'>> = {
   'Decoration Charges': { desc:'Decoration / Event Setup Charges', unit:'Job', rate:5000 },
 };
 
+/* ── Customer directory auto-fill by code ── */
+const CUSTOMERS: Record<string, { name:string; deliveryLocation:string }> = {
+  'CUST001': { name:'The Grand Wedding Co.',    deliveryLocation:'Whitefield, Bangalore' },
+  'CUST002': { name:'Lakeview Banquet Hall',    deliveryLocation:'Hebbal, Bangalore' },
+  'CUST003': { name:'Sri Krishna Events',       deliveryLocation:'Jayanagar, Bangalore' },
+  'CUST004': { name:'Orchid Decorators',        deliveryLocation:'Indiranagar, Bangalore' },
+  'CUST005': { name:'Misty Blooms',             deliveryLocation:'Wilson Garden, Bangalore' },
+};
+
 const SAVED_INVOICES = flowerData.invoices.map(i => ({
   no: i.no, client: i.client, taxable: i.taxable, gst: i.gst, total: i.total,
   date: i.date, due: i.due, status: i.status as 'Paid'|'Unpaid'|'Overdue',
@@ -29,15 +40,17 @@ const sc: Record<string,string> = { Paid:'badge-green', Unpaid:'badge-yellow', O
 const fmt  = (n:number) => n.toLocaleString('en-IN');
 const fmtR = (n:number) => '₹'+fmt(n);
 
-function newItem(): Item { return { id:Date.now()+Math.random(), desc:'', ordQty:1, avlQty:1, unit:'Nos', rate:0 }; }
+function newItem(): Item { return { id:Date.now()+Math.random(), code:'', desc:'', ordQty:1, unit:'Nos', rate:0 }; }
 
 function calcItem(it:Item) {
-  const total = it.avlQty * it.rate;
+  const total = it.ordQty * it.rate;
   return { total };
 }
 
 export default function BillingInvoice() {
+  const { findByCodeOrColour } = useInventory();
   const [view, setView]   = useState<View>('list');
+  const [docType, setDocType] = useState<DocType>('orderform');
   const [items, setItems] = useState<Item[]>([newItem()]);
   const [saved, setSaved] = useState(SAVED_INVOICES);
   const [showPDF, setShowPDF] = useState(false);
@@ -47,6 +60,7 @@ export default function BillingInvoice() {
   const [invDate,  setInvDate]  = useState(new Date().toISOString().slice(0,10));
   const [dDate,    setDDate]    = useState(new Date().toISOString().slice(0,10));
   const [reference,setReference]= useState('');
+  const [custCode, setCustCode] = useState('');
   const [party,    setParty]    = useState('');
   const [deliveryLoc, setDeliveryLoc] = useState('');
   const [transport, setTransport] = useState(0);
@@ -54,21 +68,43 @@ export default function BillingInvoice() {
   const itemsTotal = items.reduce((s,it)=>s+calcItem(it).total,0);
   const grandTotal = itemsTotal + (transport || 0);
 
+  /* Low-stock check against live Inventory data (only for rows matched by product code) */
+  const stockErrors = items.map(it => {
+    if (!it.code) return null;
+    const stock = findByCodeOrColour(it.code);
+    if (stock && it.ordQty > stock.qty) return `Low stock! Only ${stock.qty} ${stock.unit} available for ${it.code}`;
+    return null;
+  });
+  const hasStockError = stockErrors.some(Boolean);
+
   const updateItem = (id:number, field:keyof Item, val:string|number) =>
     setItems(prev=>prev.map(it=>it.id===id?{...it,[field]:val}:it));
 
-  const autoFill = (id:number, name:string) => {
+  const autoFillByName = (id:number, name:string) => {
     updateItem(id,'desc',name);
     const p = PRODUCTS[name];
-    if(p) setItems(prev=>prev.map(it=>it.id===id?{...it,...p}:it));
+    if(p) setItems(prev=>prev.map(it=>it.id===id?{...it,...p,code:''}:it));
+  };
+
+  const autoFillByCode = (id:number, code:string) => {
+    updateItem(id,'code',code);
+    const stock = findByCodeOrColour(code);
+    if(stock) setItems(prev=>prev.map(it=>it.id===id?{...it,desc:`${stock.category} — ${stock.colour}`,unit:stock.unit,rate:stock.rate}:it));
+  };
+
+  const autoFillCustomer = (code:string) => {
+    setCustCode(code);
+    const c = CUSTOMERS[code.trim().toUpperCase()];
+    if(c) { setParty(c.name); setDeliveryLoc(c.deliveryLocation); }
   };
 
   const addItem = () => setItems(p=>[...p,newItem()]);
   const delItem = (id:number) => setItems(p=>p.filter(it=>it.id!==id));
-  const clearForm = () => { setItems([newItem()]); setParty(''); setDeliveryLoc(''); setReference(''); setTransport(0); };
+  const clearForm = () => { setItems([newItem()]); setCustCode(''); setParty(''); setDeliveryLoc(''); setReference(''); setTransport(0); };
 
   const saveInvoice = () => {
     if(!party){ alert('Enter Customer Name'); return; }
+    if(hasStockError){ alert('Cannot save — one or more items exceed available stock.'); return; }
     setSaved(p=>[{ no:billNo, client:party, taxable:Math.round(itemsTotal), gst:0, total:Math.round(grandTotal), date:new Date(invDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}).replace(/ /g,'-'), due:'7 days', status:'Unpaid' },...p]);
     setView('list');
     clearForm();
@@ -76,11 +112,12 @@ export default function BillingInvoice() {
   };
 
   const openPDF = () => {
+    if(hasStockError){ alert('Cannot generate — one or more items exceed available stock.'); return; }
     setPdfInvoiceData({
-      billNo, date: new Date(invDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}),
+      docType, billNo, date: new Date(invDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}),
       dDate: new Date(dDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'}),
-      reference, buyerName: party||'—', deliveryLocation: deliveryLoc,
-      items: items.filter(it=>it.desc).map(it=>({ desc:it.desc, ordQty:it.ordQty, avlQty:it.avlQty, unit:it.unit, rate:it.rate })),
+      reference, custCode, buyerName: party||'—', deliveryLocation: deliveryLoc,
+      items: items.filter(it=>it.desc).map(it=>({ desc:it.desc, ordQty:it.ordQty, unit:it.unit, rate:it.rate })),
       transport,
     });
     setShowPDF(true);
@@ -88,8 +125,8 @@ export default function BillingInvoice() {
 
   const openPDFFromList = (r: typeof saved[0]) => {
     setPdfInvoiceData({
-      billNo: r.no, date: r.date, dDate: r.date, reference: '', buyerName: r.client, deliveryLocation: '',
-      items: [{ desc:'Flower Supply / Decoration', ordQty:1, avlQty:1, unit:'Job', rate:r.taxable }],
+      docType, billNo: r.no, date: r.date, dDate: r.date, reference: '', custCode: '', buyerName: r.client, deliveryLocation: '',
+      items: [{ desc:'Flower Supply / Decoration', ordQty:1, unit:'Job', rate:r.taxable }],
       transport: 0,
     });
     setShowPDF(true);
@@ -97,7 +134,7 @@ export default function BillingInvoice() {
 
   const sendWhatsApp = () => {
     if(!party){ alert('Enter Customer Name'); return; }
-    const msg = encodeURIComponent(`Dear ${party},\n\nPlease find your Order Form:\nBill No: ${billNo}\nDate: ${invDate}\nAmount: ₹${fmt(Math.round(grandTotal))}\n\nThank you,\nJasmine Pollux Blooms\n📞 +91 97403 24378`);
+    const msg = encodeURIComponent(`Dear ${party},\n\nPlease find your ${docType==='invoice'?'Invoice':'Order Form'}:\nBill No: ${billNo}\nDate: ${invDate}\nAmount: ₹${fmt(Math.round(grandTotal))}\n\nThank you,\nJasmine Pollux Blooms\n📞 +91 97403 24378`);
     window.open(`https://wa.me/?text=${msg}`, '_blank');
   };
 
@@ -154,10 +191,19 @@ export default function BillingInvoice() {
     <div className="page-enter" style={{paddingBottom:80}}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-bold text-gray-800">Billing — New Order Form</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Flower supply / event decoration order form</p>
+          <h2 className="text-lg font-bold text-gray-800">Billing — New {docType==='invoice'?'Invoice':'Order Form'}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Flower supply / event decoration billing</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+            {(['orderform','invoice'] as DocType[]).map(t=>(
+              <button key={t} onClick={()=>setDocType(t)}
+                className="px-3 py-1.5 text-xs font-semibold transition-all"
+                style={{background: docType===t?'#be185d':'#fff', color:docType===t?'#fff':'#6b7280', borderRight:'1px solid #e5e7eb'}}>
+                {t==='orderform'?'Order Form':'Invoice'}
+              </button>
+            ))}
+          </div>
           <button className="btn-brand flex items-center gap-2 text-xs" onClick={()=>setView('form')}><Plus size={13}/> New Invoice</button>
           <button className="btn-outline flex items-center gap-2 text-xs" onClick={()=>setView('list')}><FileText size={13}/> Invoice List</button>
         </div>
@@ -182,7 +228,12 @@ export default function BillingInvoice() {
             <input className="inp" placeholder="Optional reference" value={reference} onChange={e=>setReference(e.target.value)}/>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="form-label">CUSTOMER CODE</label>
+            <input className="inp font-mono" list="customer-codes" placeholder="CUST001" value={custCode} onChange={e=>autoFillCustomer(e.target.value)}/>
+            <datalist id="customer-codes">{Object.keys(CUSTOMERS).map(c=><option key={c} value={c}/>)}</datalist>
+          </div>
           <div>
             <label className="form-label">CUSTOMER <span className="text-red-500">*</span></label>
             <input className="inp" placeholder="Customer / Company name" value={party} onChange={e=>setParty(e.target.value)}/>
@@ -197,31 +248,34 @@ export default function BillingInvoice() {
       <div className="card mb-4">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <span className="font-semibold text-sm text-gray-700">Item Details</span>
-          <span className="text-xs text-gray-400">Type flower name to auto-fill (e.g. Anthurium Medium)</span>
+          <span className="text-xs text-gray-400">Enter item Code (auto-fills from Inventory) or type flower name</span>
         </div>
         <div className="overflow-x-auto">
-          <table style={{width:'100%', borderCollapse:'collapse', minWidth:760}}>
+          <table style={{width:'100%', borderCollapse:'collapse', minWidth:820}}>
             <thead>
               <tr style={{background:'#fdf2f8'}}>
-                {['Particulars','Ord Qty','Avl Qty','Unit','Unit Price (₹)','Total',''].map(h=>(
+                {['Code','Particulars','Ord Qty','Unit','Unit Price (₹)','Total',''].map(h=>(
                   <th key={h} style={{textAlign:'left',padding:'8px 12px',fontSize:11,fontWeight:700,color:'#6b7280',borderBottom:'1px solid #f3d9e8',whiteSpace:'nowrap'}}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {items.map((it)=>{
+              {items.map((it, idx)=>{
                 const { total } = calcItem(it);
+                const err = stockErrors[idx];
                 return (
-                  <tr key={it.id} style={{borderBottom:'1px solid #f3f4f6'}}>
-                    <td style={{padding:'6px 8px', minWidth:220}}>
+                  <Fragment key={it.id}>
+                  <tr style={{borderBottom: err?'none':'1px solid #f3f4f6'}}>
+                    <td style={{padding:'6px 8px', width:100}}>
+                      <input className="inp py-1 text-xs w-full font-mono" placeholder="ANT-MED" value={it.code}
+                        onChange={e=>autoFillByCode(it.id,e.target.value)} style={{minWidth:90, borderColor: err?'#ef4444':undefined}}/>
+                    </td>
+                    <td style={{padding:'6px 8px', minWidth:200}}>
                       <input className="inp py-1 text-xs w-full" placeholder="Particulars (e.g. Anthurium Medium)" value={it.desc}
-                        onChange={e=>autoFill(it.id,e.target.value)} list="flower-catalog" style={{minWidth:200}}/>
+                        onChange={e=>autoFillByName(it.id,e.target.value)} list="flower-catalog" style={{minWidth:180}}/>
                     </td>
                     <td style={{padding:'6px 8px', width:70}}>
-                      <input className="inp py-1 text-xs w-full text-center" type="number" value={it.ordQty} onChange={e=>updateItem(it.id,'ordQty',parseFloat(e.target.value)||0)} style={{minWidth:60}}/>
-                    </td>
-                    <td style={{padding:'6px 8px', width:70}}>
-                      <input className="inp py-1 text-xs w-full text-center" type="number" value={it.avlQty} onChange={e=>updateItem(it.id,'avlQty',parseFloat(e.target.value)||0)} style={{minWidth:60}}/>
+                      <input className="inp py-1 text-xs w-full text-center" type="number" value={it.ordQty} onChange={e=>updateItem(it.id,'ordQty',parseFloat(e.target.value)||0)} style={{minWidth:60, borderColor: err?'#ef4444':undefined}}/>
                     </td>
                     <td style={{padding:'6px 8px', width:80}}>
                       <select className="sel py-1 text-xs" value={it.unit} onChange={e=>updateItem(it.id,'unit',e.target.value)} style={{minWidth:70,fontSize:11}}>
@@ -238,6 +292,14 @@ export default function BillingInvoice() {
                       {items.length>1 && <button onClick={()=>delItem(it.id)} style={{color:'#ef4444',background:'none',border:'none',cursor:'pointer',padding:4}}><Trash2 size={13}/></button>}
                     </td>
                   </tr>
+                  {err && (
+                    <tr style={{borderBottom:'1px solid #f3f4f6'}}>
+                      <td colSpan={7} style={{padding:'0 8px 8px', color:'#dc2626', fontSize:11, display:'flex', alignItems:'center', gap:4}}>
+                        <AlertTriangle size={12}/> {err}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -274,11 +336,12 @@ export default function BillingInvoice() {
 
       <div style={{position:'fixed', bottom:0, left:240, right:0, background:'#fff', borderTop:'1px solid #e5e7eb', padding:'12px 24px', display:'flex', alignItems:'center', gap:12, zIndex:50, boxShadow:'0 -2px 12px rgba(0,0,0,0.06)'}}>
         <button className="btn-outline" onClick={clearForm}>Clear</button>
+        {hasStockError && <span style={{color:'#dc2626', fontSize:12, fontWeight:600, display:'flex', alignItems:'center', gap:4}}><AlertTriangle size={13}/> Fix low-stock items to continue</span>}
         <div style={{flex:1}}/>
-        <button onClick={openPDF} style={{background:'#be185d',color:'#fff',border:'none',borderRadius:8,padding:'8px 20px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:8}}>
+        <button disabled={hasStockError} onClick={openPDF} style={{background: hasStockError?'#f3d9e8':'#be185d',color:'#fff',border:'none',borderRadius:8,padding:'8px 20px',fontSize:13,fontWeight:700,cursor: hasStockError?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:8}}>
           <Download size={14}/> Preview &amp; Download PDF
         </button>
-        <button onClick={saveInvoice} style={{background:'#d97706',color:'#fff',border:'none',borderRadius:8,padding:'8px 20px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:8}}>
+        <button disabled={hasStockError} onClick={saveInvoice} style={{background: hasStockError?'#fde3c1':'#d97706',color:'#fff',border:'none',borderRadius:8,padding:'8px 20px',fontSize:13,fontWeight:700,cursor: hasStockError?'not-allowed':'pointer',display:'flex',alignItems:'center',gap:8}}>
           <FileText size={14}/> Save Invoice
         </button>
         <button onClick={sendWhatsApp} style={{background:'#25d366',color:'#fff',border:'none',borderRadius:8,padding:'8px 20px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:8}}>

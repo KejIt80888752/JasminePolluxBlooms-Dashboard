@@ -1,51 +1,68 @@
-import { useState } from 'react';
-import { Plus, Package, AlertTriangle, Boxes, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Package, AlertTriangle, Boxes, X, Upload, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { useInventory, LOCATIONS } from '../contexts/InventoryContext';
+import { useVendors } from '../contexts/VendorContext';
 
-const DATA = [
-  { id:1, code:'ANT-MED', name:'Anthurium Medium', category:'Anthurium', variety:'Local', qty:120, minQty:50, unit:'Nos', rate:50, location:'Cold Room A', status:'OK' },
-  { id:2, code:'ANT-SML', name:'Anthurium Small', category:'Anthurium', variety:'Local', qty:80, minQty:40, unit:'Nos', rate:40, location:'Cold Room A', status:'OK' },
-  { id:3, code:'ANT-MIN', name:'Anthurium Mini', category:'Anthurium', variety:'Local', qty:18, minQty:30, unit:'Nos', rate:30, location:'Cold Room A', status:'Low Stock' },
-  { id:4, code:'ROSE-RED', name:'Red Rose', category:'Rose', variety:'Bangalore Rose', qty:300, minQty:100, unit:'Nos', rate:12, location:'Cold Room B', status:'OK' },
-  { id:5, code:'ROSE-WHT', name:'White Rose', category:'Rose', variety:'Dutch', qty:45, minQty:60, unit:'Nos', rate:18, location:'Cold Room B', status:'Low Stock' },
-  { id:6, code:'MARI-YEL', name:'Marigold Yellow', category:'Marigold', variety:'Local', qty:0, minQty:20, unit:'Kg', rate:80, location:'Warehouse', status:'Out of Stock' },
-  { id:7, code:'JASMINE', name:'Jasmine (Malli)', category:'Jasmine', variety:'Mysore Mallige', qty:35, minQty:15, unit:'Kg', rate:600, location:'Cold Room A', status:'OK' },
-  { id:8, code:'LILY-WHT', name:'White Lily', category:'Lily', variety:'Asiatic', qty:24, minQty:20, unit:'Stems', rate:45, location:'Cold Room B', status:'OK' },
-  { id:9, code:'ORCHID', name:'Orchid Stem', category:'Orchid', variety:'Thai', qty:60, minQty:25, unit:'Stems', rate:65, location:'Cold Room B', status:'OK' },
-  { id:10, code:'RIBBON-DEC', name:'Decoration Ribbon', category:'Accessory', variety:'Satin', qty:200, minQty:50, unit:'Mtrs', rate:8, location:'Warehouse', status:'OK' },
-];
-
-type Row = typeof DATA[0];
 const cats = ['All','Anthurium','Rose','Marigold','Jasmine','Lily','Orchid','Accessory'];
 const sc: Record<string,string> = { OK:'badge-green', 'Low Stock':'badge-yellow', 'Out of Stock':'badge-red' };
 
-const EMPTY = { code:'', name:'', category:'Anthurium', variety:'', qty:'', minQty:'', unit:'Nos', rate:'', location:'Cold Room A', status:'OK' };
+const EMPTY = { code:'', colour:'', category:'Anthurium', variety:'', qty:'', rate:'', location:LOCATIONS[0], billNo:'', vendorName:'' };
 
 export default function Inventory() {
-  const [data, setData] = useState<Row[]>(DATA);
+  const { items, addItem, addItems } = useInventory();
+  const { vendors } = useVendors();
   const [filter, setFilter] = useState('All');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string,string>>(EMPTY);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const filtered = filter==='All' ? data : data.filter(d=>d.category===filter);
-  const totalValue = data.reduce((s,d)=>s+(d.qty*d.rate),0);
-  const lowStock   = data.filter(d=>d.status==='Low Stock'||d.status==='Out of Stock').length;
-  const outOfStock = data.filter(d=>d.status==='Out of Stock').length;
+  const filtered = filter==='All' ? items : items.filter(d=>d.category===filter);
+  const totalValue = items.reduce((s,d)=>s+(d.qty*d.rate),0);
+  const lowStock   = items.filter(d=>d.status==='Low Stock'||d.status==='Out of Stock').length;
+  const outOfStock = items.filter(d=>d.status==='Out of Stock').length;
 
   const handleAdd = () => {
     const qty = parseInt(form.qty)||0;
-    const minQty = parseInt(form.minQty)||0;
     const rate = parseFloat(form.rate)||0;
-    const status = qty===0?'Out of Stock':qty<minQty?'Low Stock':'OK';
-    const newRow: Row = { id:Date.now(), code:form.code, name:form.name, category:form.category, variety:form.variety, qty, minQty, unit:form.unit, rate, location:form.location, status };
-    setData(prev=>[...prev, newRow]);
+    addItem({ code:form.code, colour:form.colour, category:form.category, variety:form.variety, qty, unit:'Nos', rate, location:form.location, billNo:form.billNo, vendorName:form.vendorName });
     setOpen(false); setForm(EMPTY);
+  };
+
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet([
+      { Code:'ANT-MED', Colour:'Green', Category:'Anthurium', Variety:'Local', Qty:100, Unit:'Nos', Rate:50, Location:'Warehouse - 1', BillNo:'JPB-2026-101', VendorName:'Black Tulip Flowers Intl' },
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, 'inventory-template.xlsx');
+  };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const wb = XLSX.read(evt.target?.result, { type: 'binary' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<any>(sheet);
+      const parsed = rows.map(r => ({
+        code: String(r.Code||''), colour: String(r.Colour||''), category: String(r.Category||'Anthurium'),
+        variety: String(r.Variety||''), qty: parseInt(r.Qty)||0, unit: String(r.Unit||'Nos'),
+        rate: parseFloat(r.Rate)||0, location: String(r.Location||LOCATIONS[0]),
+        billNo: String(r.BillNo||''), vendorName: String(r.VendorName||''),
+      }));
+      if (parsed.length) addItems(parsed);
+      if (fileRef.current) fileRef.current.value = '';
+    };
+    reader.readAsBinaryString(file);
   };
 
   return (
     <div className="page-enter">
       {/* Stats */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
-        <div className="stat-card"><div className="p-2.5 rounded-xl flex items-center justify-center shrink-0" style={{background:'rgba(190,24,93,.1)'}}><Boxes size={18} color="#be185d"/></div><div><div className="text-xs text-gray-400 font-medium">Total Items</div><div className="text-xl font-bold text-gray-800 mt-0.5">{data.length}</div></div></div>
+        <div className="stat-card"><div className="p-2.5 rounded-xl flex items-center justify-center shrink-0" style={{background:'rgba(190,24,93,.1)'}}><Boxes size={18} color="#be185d"/></div><div><div className="text-xs text-gray-400 font-medium">Total Items</div><div className="text-xl font-bold text-gray-800 mt-0.5">{items.length}</div></div></div>
         <div className="stat-card"><div className="p-2.5 rounded-xl flex items-center justify-center shrink-0" style={{background:'rgba(22,163,74,.1)'}}><Package size={18} color="#16a34a"/></div><div><div className="text-xs text-gray-400 font-medium">Inventory Value</div><div className="text-xl font-bold text-gray-800 mt-0.5">₹{totalValue.toLocaleString('en-IN')}</div></div></div>
         <div className="stat-card"><div className="p-2.5 rounded-xl flex items-center justify-center shrink-0" style={{background:'rgba(245,158,11,.1)'}}><AlertTriangle size={18} color="#f59e0b"/></div><div><div className="text-xs text-gray-400 font-medium">Low Stock</div><div className="text-xl font-bold text-gray-800 mt-0.5">{lowStock} items</div></div></div>
         <div className="stat-card"><div className="p-2.5 rounded-xl flex items-center justify-center shrink-0" style={{background:'rgba(220,38,38,.1)'}}><AlertTriangle size={18} color="#dc2626"/></div><div><div className="text-xs text-gray-400 font-medium">Out of Stock</div><div className="text-xl font-bold text-gray-800 mt-0.5">{outOfStock} items</div></div></div>
@@ -62,6 +79,13 @@ export default function Inventory() {
           ))}
         </div>
         <div className="flex-1"/>
+        <button onClick={downloadTemplate} className="btn-outline text-xs flex items-center gap-1.5">
+          <Download size={13}/> Excel Template
+        </button>
+        <button onClick={()=>fileRef.current?.click()} className="btn-outline text-xs flex items-center gap-1.5">
+          <Upload size={13}/> Bulk Upload
+        </button>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:'none'}} onChange={handleFile}/>
         <button onClick={()=>setOpen(true)} className="btn-brand text-xs flex items-center gap-1.5">
           <Plus size={13}/> Add Item
         </button>
@@ -74,15 +98,16 @@ export default function Inventory() {
             <thead>
               <tr>
                 <th>Code</th>
-                <th style={{minWidth:180}}>Item Name</th>
+                <th style={{minWidth:120}}>Item Colour</th>
                 <th>Category</th>
                 <th>Variety</th>
                 <th>Qty</th>
-                <th>Min Qty</th>
                 <th>Unit</th>
                 <th>Rate (₹)</th>
                 <th>Value (₹)</th>
                 <th>Location</th>
+                <th>Bill No</th>
+                <th>Vendor Name</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -90,15 +115,16 @@ export default function Inventory() {
               {filtered.map(d=>(
                 <tr key={d.id}>
                   <td className="font-mono text-xs text-gray-500">{d.code}</td>
-                  <td style={{fontWeight:600}}>{d.name}</td>
+                  <td style={{fontWeight:600}}>{d.colour}</td>
                   <td><span className="badge badge-gray text-[10px]">{d.category}</span></td>
                   <td className="text-xs">{d.variety}</td>
-                  <td style={{fontWeight:700, color: d.qty===0?'var(--red)':d.qty<d.minQty?'var(--orange)':'var(--green)'}}>{d.qty}</td>
-                  <td className="text-xs text-gray-400">{d.minQty}</td>
+                  <td style={{fontWeight:700, color: d.qty===0?'var(--red)':d.qty<20?'var(--orange)':'var(--green)'}}>{d.qty}</td>
                   <td className="text-xs">{d.unit}</td>
                   <td>₹{d.rate.toLocaleString('en-IN')}</td>
                   <td style={{fontWeight:600}}>₹{(d.qty*d.rate).toLocaleString('en-IN')}</td>
                   <td className="text-xs text-gray-500">{d.location}</td>
+                  <td className="text-xs font-mono">{d.billNo || '—'}</td>
+                  <td className="text-xs">{d.vendorName || '—'}</td>
                   <td><span className={`badge ${sc[d.status]}`}>{d.status}</span></td>
                 </tr>
               ))}
@@ -124,25 +150,24 @@ export default function Inventory() {
                   </select>
                 </div>
               </div>
-              <div className="form-field"><label className="form-label">Item Name</label><input className="inp" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
+              <div className="form-field"><label className="form-label">Item Colour</label><input className="inp" placeholder="e.g. Red, White, Pink" value={form.colour} onChange={e=>setForm(f=>({...f,colour:e.target.value}))}/></div>
               <div className="form-row">
                 <div className="form-field"><label className="form-label">Variety</label><input className="inp" value={form.variety} onChange={e=>setForm(f=>({...f,variety:e.target.value}))}/></div>
-                <div className="form-field"><label className="form-label">Unit</label>
-                  <select className="sel" value={form.unit} onChange={e=>setForm(f=>({...f,unit:e.target.value}))}>
-                    {['Nos','Kg','Stems','Mtrs','Bunch','Dozen'].map(u=><option key={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="form-row">
                 <div className="form-field"><label className="form-label">Quantity</label><input className="inp" type="number" value={form.qty} onChange={e=>setForm(f=>({...f,qty:e.target.value}))}/></div>
-                <div className="form-field"><label className="form-label">Min. Quantity</label><input className="inp" type="number" value={form.minQty} onChange={e=>setForm(f=>({...f,minQty:e.target.value}))}/></div>
               </div>
               <div className="form-row">
                 <div className="form-field"><label className="form-label">Rate (₹)</label><input className="inp" type="number" value={form.rate} onChange={e=>setForm(f=>({...f,rate:e.target.value}))}/></div>
                 <div className="form-field"><label className="form-label">Location</label>
                   <select className="sel" value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))}>
-                    {['Cold Room A','Cold Room B','Warehouse'].map(l=><option key={l}>{l}</option>)}
+                    {LOCATIONS.map(l=><option key={l}>{l}</option>)}
                   </select>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-field"><label className="form-label">Bill No</label><input className="inp" placeholder="JPB-2026-101" value={form.billNo} onChange={e=>setForm(f=>({...f,billNo:e.target.value}))}/></div>
+                <div className="form-field"><label className="form-label">Vendor Name</label>
+                  <input className="inp" list="vendor-names" placeholder="Vendor name" value={form.vendorName} onChange={e=>setForm(f=>({...f,vendorName:e.target.value}))}/>
+                  <datalist id="vendor-names">{vendors.map(v=><option key={v.id} value={v.name}/>)}</datalist>
                 </div>
               </div>
             </div>

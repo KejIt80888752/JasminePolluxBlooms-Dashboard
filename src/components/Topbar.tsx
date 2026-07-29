@@ -2,12 +2,15 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Menu, Download, Bell, Sun, Moon } from 'lucide-react';
 
 const PAGE_META: Record<string, { title:string; sub:string }> = {
-  overview:  { title:'Dashboard',  sub:'Jasmine Pollux Blooms — Overview' },
-  inventory: { title:'Inventory',  sub:'Flower stock & material management' },
-  billing:   { title:'Billing',    sub:'Invoice and payment management' },
-  quotation: { title:'Quotation',  sub:'Manage client quotations' },
-  leads:     { title:'Leads',      sub:'Track and convert new leads' },
-  users:     { title:'Users',      sub:'Staff accounts & access control' },
+  overview:         { title:'Dashboard',      sub:'Jasmine Pollux Blooms — Overview' },
+  inventory:        { title:'Inventory',      sub:'Flower stock & material management' },
+  'stock-transfer': { title:'Stock Transfer', sub:'Stock moved between warehouses' },
+  'damage-stock':   { title:'Damage Stock',   sub:'Damaged / write-off stock records' },
+  vendors:          { title:'Vendor Details', sub:'Supplier / vendor directory' },
+  billing:          { title:'Billing',        sub:'Invoice and payment management' },
+  quotation:        { title:'Quotation',      sub:'Manage client quotations' },
+  leads:            { title:'Leads',          sub:'Track and convert new leads' },
+  users:            { title:'Users',          sub:'Staff accounts & access control' },
 };
 
 interface Props { page:string; onMenuClick:()=>void; }

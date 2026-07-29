@@ -1,17 +1,21 @@
 import {
   LayoutDashboard, Receipt, FileText, Boxes, UserPlus, UserCog, LogOut, X,
+  ArrowLeftRight, AlertOctagon, Truck,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import raiseLogo from '../assets/the-raise-logo.png';
 import jpbMark from '../assets/jpb-mark.png';
 
 const NAV = [
-  { id:'overview',  icon:LayoutDashboard, label:'Dashboard'  },
-  { id:'inventory', icon:Boxes,           label:'Inventory'  },
-  { id:'billing',   icon:Receipt,         label:'Billing'    },
-  { id:'quotation', icon:FileText,        label:'Quotation'  },
-  { id:'leads',     icon:UserPlus,        label:'Leads'      },
-  { id:'users',     icon:UserCog,         label:'Users'      },
+  { id:'overview',        icon:LayoutDashboard, label:'Dashboard'       },
+  { id:'inventory',       icon:Boxes,           label:'Inventory'       },
+  { id:'stock-transfer',  icon:ArrowLeftRight,  label:'Stock Transfer'  },
+  { id:'damage-stock',    icon:AlertOctagon,    label:'Damage Stock'    },
+  { id:'vendors',         icon:Truck,           label:'Vendor Details'  },
+  { id:'billing',         icon:Receipt,         label:'Billing'         },
+  { id:'quotation',       icon:FileText,        label:'Quotation'       },
+  { id:'leads',           icon:UserPlus,        label:'Leads'           },
+  { id:'users',           icon:UserCog,         label:'Users'           },
 ];
 
 interface Props { page:string; setPage:(p:string)=>void; open:boolean; onClose:()=>void; }
