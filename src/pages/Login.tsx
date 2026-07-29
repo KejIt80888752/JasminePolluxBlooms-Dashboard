@@ -64,8 +64,8 @@ export default function Login() {
           {/* Address */}
           <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:14, position:"relative" }}>
             {[
-              ["fa-location-dot","22/18, Shilpa Building, 12th Cross, Lakkasandra, Wilson Garden, Bangalore 560030"],
-              ["fa-phone","+91 97403 24378 / +91 99669 60816"],
+              ["fa-location-dot","No: 24, 12th Cross, 2nd Main, Lakkasandra, Wilson Garden, Bengaluru 560030"],
+              ["fa-phone","+91 91879 83881 / +91 91879 83882"],
               ["fa-envelope","jasminepolluxblooms@gmail.com"],
             ].map(([icon,text])=>(
               <div key={text} style={{ fontSize:11.5, color:"#d8b4cf", display:"flex", alignItems:"flex-start", gap:7 }}>

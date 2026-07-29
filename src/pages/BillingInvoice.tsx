@@ -134,7 +134,7 @@ export default function BillingInvoice() {
 
   const sendWhatsApp = () => {
     if(!party){ alert('Enter Customer Name'); return; }
-    const msg = encodeURIComponent(`Dear ${party},\n\nPlease find your ${docType==='invoice'?'Invoice':'Order Form'}:\nBill No: ${billNo}\nDate: ${invDate}\nAmount: ₹${fmt(Math.round(grandTotal))}\n\nThank you,\nJasmine Pollux Blooms\n📞 +91 97403 24378`);
+    const msg = encodeURIComponent(`Dear ${party},\n\nPlease find your ${docType==='invoice'?'Invoice':'Order Form'}:\nBill No: ${billNo}\nDate: ${invDate}\nAmount: ₹${fmt(Math.round(grandTotal))}\n\nThank you,\nJasmine Pollux Blooms\n📞 +91 91879 83881`);
     window.open(`https://wa.me/?text=${msg}`, '_blank');
   };
 

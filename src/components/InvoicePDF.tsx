@@ -33,10 +33,9 @@ interface Props {
 const COMPANY = {
   name: 'JASMINE POLLUX BLOOMS',
   tagline: 'Flowers With Care',
-  addr1: 'Old No: 24, New No: 22/18, Shilpa Building, 12th Cross',
-  addr2: 'Near R.K Electricals since 1985, 2nd Main, Lakkasandra',
-  addr3: 'Wilson Garden, Bangalore — 560030, Karnataka',
-  phone: '+91 97403 24378 / +91 99669 60816',
+  addr1: 'No: 24, 12th Cross, 2nd Main, Lakkasandra',
+  addr2: 'Wilson Garden, Bengaluru — 560030, Karnataka, India',
+  phone: '+91 91879 83881 / +91 91879 83882',
   email: 'jasminepolluxblooms@gmail.com',
   gstin: '29AAXFJ0042J1ZZ',
 };
@@ -106,7 +105,7 @@ export default function InvoicePDF({ data, onClose }: Props) {
           <div style={{ fontSize:13, fontWeight:700, letterSpacing:.5, color:'#1a1a1a', alignSelf:'center', whiteSpace:'nowrap' }}>{title}</div>
         </div>
         <div style={{ fontSize:7, color:'#374151', textAlign:'left', lineHeight:1.5, marginBottom:8 }}>
-          {COMPANY.addr1}, {COMPANY.addr2}, {COMPANY.addr3}<br/>
+          {COMPANY.addr1}, {COMPANY.addr2}<br/>
           {COMPANY.phone} &nbsp;|&nbsp; {COMPANY.email} &nbsp;|&nbsp; GSTIN: {COMPANY.gstin}
         </div>
 
