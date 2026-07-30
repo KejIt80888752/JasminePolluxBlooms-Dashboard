@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Download, Printer, X } from 'lucide-react';
 import jpbMark from '../assets/jpb-mark.png';
+import { COMPANY } from '../lib/brand';
 
 interface InvoiceItem {
   desc: string;
@@ -28,17 +29,6 @@ interface Props {
   data: InvoiceData;
   onClose: () => void;
 }
-
-/* ── Company details — Jasmine Pollux Blooms ── */
-const COMPANY = {
-  name: 'JASMINE POLLUX BLOOMS',
-  tagline: 'Flowers With Care',
-  addr1: 'No: 24, 12th Cross, 2nd Main, Lakkasandra',
-  addr2: 'Wilson Garden, Bengaluru — 560030, Karnataka, India',
-  phone: '+91 91879 83881 / +91 91879 83882',
-  email: 'jasminepolluxblooms@gmail.com',
-  gstin: '29AAXFJ0042J1ZZ',
-};
 
 /* A5 page width @ 96dpi (148mm) */
 const PAGE_W = 559;

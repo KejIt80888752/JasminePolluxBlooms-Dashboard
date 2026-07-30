@@ -12,6 +12,10 @@ import StockTransfer from './pages/StockTransfer';
 import DamageStock from './pages/DamageStock';
 import Vendors from './pages/Vendors';
 import BillingInvoice from './pages/BillingInvoice';
+import CashVoucher from './pages/CashVoucher';
+import Receipt from './pages/Receipt';
+import Letterhead from './pages/Letterhead';
+import BusinessCard from './pages/BusinessCard';
 import Quotation from './pages/Quotation';
 import Leads from './pages/Leads';
 import Users from './pages/Users';
@@ -24,6 +28,10 @@ const PAGES: Record<string, React.ComponentType> = {
   'damage-stock': DamageStock,
   vendors: Vendors,
   billing:   BillingInvoice,
+  'cash-voucher': CashVoucher,
+  receipt: Receipt,
+  letterhead: Letterhead,
+  'business-card': BusinessCard,
   quotation: Quotation,
   leads:     Leads,
   users:     Users,

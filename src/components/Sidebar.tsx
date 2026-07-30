@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Receipt, FileText, Boxes, UserPlus, UserCog, LogOut, X,
-  ArrowLeftRight, AlertOctagon, Truck,
+  ArrowLeftRight, AlertOctagon, Truck, Wallet, ReceiptText, FileSignature, CreditCard,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import raiseLogo from '../assets/the-raise-logo.png';
@@ -13,6 +13,10 @@ const NAV = [
   { id:'damage-stock',    icon:AlertOctagon,    label:'Damage Stock'    },
   { id:'vendors',         icon:Truck,           label:'Vendor Details'  },
   { id:'billing',         icon:Receipt,         label:'Billing'         },
+  { id:'cash-voucher',    icon:Wallet,          label:'Cash Voucher'    },
+  { id:'receipt',         icon:ReceiptText,     label:'Receipt'         },
+  { id:'letterhead',      icon:FileSignature,   label:'Letterhead'      },
+  { id:'business-card',   icon:CreditCard,      label:'Business Card'   },
   { id:'quotation',       icon:FileText,        label:'Quotation'       },
   { id:'leads',           icon:UserPlus,        label:'Leads'           },
   { id:'users',           icon:UserCog,         label:'Users'           },
