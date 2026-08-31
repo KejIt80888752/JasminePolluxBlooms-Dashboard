@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 
-const sampleUsers = [
-  { id: 1, name: 'Jasmine Anand', email: 'jasmine@jasminepolluxblooms.in', role: 'Admin', lastLogin: '2026-06-30 09:12', status: 'Active' },
-  { id: 2, name: 'Pollux Kumar', email: 'pollux@jasminepolluxblooms.in', role: 'Manager', lastLogin: '2026-06-30 08:45', status: 'Active' },
-  { id: 3, name: 'Ravi Shankar', email: 'ravi@jasminepolluxblooms.in', role: 'Florist', lastLogin: '2026-06-29 17:30', status: 'Active' },
-  { id: 4, name: 'Lakshmi Devi', email: 'lakshmi@jasminepolluxblooms.in', role: 'Accounts', lastLogin: '2026-06-28 10:22', status: 'Active' },
-  { id: 5, name: 'Vinay Prasad', email: 'vinay@jasminepolluxblooms.in', role: 'Florist', lastLogin: '2026-06-25 16:00', status: 'Inactive' },
+interface UserRow { id:number; name:string; email:string; role:string; lastLogin:string; status:string; }
+
+const INITIAL_USERS: UserRow[] = [
+  { id: 1, name: 'Jasmine', email: 'jasminepolluxblooms@gmail.com', role: 'Admin', lastLogin: '—', status: 'Active' },
 ];
 
 const roleBadge: Record<string, string> = {
@@ -23,11 +21,22 @@ const statusBadge: Record<string, string> = {
 };
 
 export default function Users() {
+  const [users, setUsers] = useState<UserRow[]>(INITIAL_USERS);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', role: '', status: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', role: '', status: 'Active' });
 
-  const activeCount = sampleUsers.filter(u=>u.status==='Active').length;
-  const adminCount = sampleUsers.filter(u=>u.role==='Admin').length;
+  const activeCount = users.filter(u=>u.status==='Active').length;
+  const adminCount = users.filter(u=>u.role==='Admin').length;
+
+  const handleAdd = () => {
+    if (!form.name || !form.email || !form.role) { alert('Enter Name, Email and Role'); return; }
+    setUsers(prev => [...prev, { id: Date.now(), name: form.name, email: form.email, role: form.role, lastLogin: '—', status: form.status || 'Active' }]);
+    setModalOpen(false); setForm({ name:'', email:'', phone:'', role:'', status:'Active' });
+  };
+
+  const handleDelete = (u: UserRow) => {
+    if (confirm(`Remove user "${u.name}"?`)) setUsers(prev => prev.filter(x => x.id !== u.id));
+  };
 
   return (
     <div className="page-enter">
@@ -43,7 +52,7 @@ export default function Users() {
           </div>
           <div>
             <div className="text-xs text-gray-400 font-medium">Total Users</div>
-            <div className="text-xl font-bold text-gray-800 mt-0.5">{sampleUsers.length}</div>
+            <div className="text-xl font-bold text-gray-800 mt-0.5">{users.length}</div>
             <div className="text-xs text-gray-400 mt-0.5">System accounts</div>
           </div>
         </div>
@@ -82,7 +91,7 @@ export default function Users() {
       <div className="card">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <span className="section-title text-sm flex items-center gap-2">System Users</span>
-          <span style={{ color: 'var(--muted)', fontSize: 13 }}>{sampleUsers.length} users</span>
+          <span style={{ color: 'var(--muted)', fontSize: 13 }}>{users.length} users</span>
         </div>
         <div className="overflow-x-auto">
           <table className="tbl w-full">
@@ -97,7 +106,7 @@ export default function Users() {
               </tr>
             </thead>
             <tbody>
-              {sampleUsers.map(r => (
+              {users.map(r => (
                 <tr key={r.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -108,12 +117,12 @@ export default function Users() {
                     </div>
                   </td>
                   <td>{r.email}</td>
-                  <td><span className={roleBadge[r.role]}>{r.role}</span></td>
+                  <td><span className={roleBadge[r.role] ?? 'badge badge-gray'}>{r.role}</span></td>
                   <td style={{ color: 'var(--muted)', fontSize: 13 }}>{r.lastLogin}</td>
                   <td><span className={statusBadge[r.status]}>{r.status}</span></td>
                   <td>
                     <button className="btn-outline btn-sm" style={{display:'inline-flex',alignItems:'center',gap:3}}><Edit2 size={11}/>Edit</button>{' '}
-                    <button className="btn-outline btn-sm" style={{display:'inline-flex',alignItems:'center',gap:3,color:'#ef4444'}}><Trash2 size={11}/>Delete</button>
+                    <button className="btn-outline btn-sm" style={{display:'inline-flex',alignItems:'center',gap:3,color:'#ef4444'}} onClick={()=>handleDelete(r)}><Trash2 size={11}/>Delete</button>
                   </td>
                 </tr>
               ))}
@@ -160,7 +169,6 @@ export default function Users() {
               <div className="form-field">
                 <label className="form-label">Status</label>
                 <select className="sel" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                  <option value="">Select status</option>
                   <option>Active</option>
                   <option>Inactive</option>
                 </select>
@@ -168,7 +176,7 @@ export default function Users() {
             </div>
             <div className="modal-foot">
               <button className="btn-outline" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button className="btn-brand">Create User</button>
+              <button className="btn-brand" onClick={handleAdd}>Create User</button>
             </div>
           </div>
         </div>

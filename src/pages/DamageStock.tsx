@@ -13,9 +13,7 @@ interface Damage {
   remarks: string;
 }
 
-const INITIAL: Damage[] = [
-  { id:1, code:'ANT-MIN', name:'Anthurium Mini — Red', qty:5, receivedDate:'2026-07-19', transferDate:'2026-07-20', location:'Warehouse - 1', remarks:'Crushed during transit' },
-];
+const INITIAL: Damage[] = [];
 
 const EMPTY = { code:'', name:'', qty:'', receivedDate:'', transferDate:'', location:LOCATIONS[0], remarks:'' };
 
@@ -51,6 +49,9 @@ export default function DamageStock() {
           <table className="tbl w-full">
             <thead><tr><th>Code</th><th>Name</th><th>Quantity</th><th>Received Date</th><th>Transfer Date</th><th>Location</th><th>Remarks</th></tr></thead>
             <tbody>
+              {data.length === 0 && (
+                <tr><td colSpan={7} style={{textAlign:'center', padding:'32px 0', color:'var(--muted)', fontSize:13}}>No damage reports yet — click "Report Damage" to record one.</td></tr>
+              )}
               {data.map(r=>(
                 <tr key={r.id}>
                   <td className="font-mono text-xs text-gray-500">{r.code}</td>

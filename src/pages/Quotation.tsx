@@ -4,7 +4,9 @@ import flowerData from '../data/flowerData.json';
 
 const statusMap: Record<string,string> = { accepted:'Approved', sent:'Pending', rejected:'Rejected' };
 
-const DATA = flowerData.estimates.map(e => ({
+interface FlowerEstimate { no:string; client:string; total:number; date:string; status:string; }
+
+const DATA = (flowerData.estimates as FlowerEstimate[]).map(e => ({
   no: e.no, client: e.client, service: 'Flower Supply / Event Decor',
   amount: `₹${e.total.toLocaleString('en-IN')}`, date: e.date, valid: '15 days',
   status: statusMap[e.status] || e.status,
@@ -36,6 +38,9 @@ export default function Quotation() {
           <table className="tbl w-full">
             <thead><tr><th>Quote No</th><th>Client</th><th>Service</th><th>Amount</th><th>Date</th><th>Valid Until</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
+              {DATA.length === 0 && (
+                <tr><td colSpan={8} style={{textAlign:'center', padding:'32px 0', color:'var(--muted)', fontSize:13}}>No quotations yet — click "New Quotation" to create one.</td></tr>
+              )}
               {DATA.map(r => (
                 <tr key={r.no}>
                   <td><strong>{r.no}</strong></td>

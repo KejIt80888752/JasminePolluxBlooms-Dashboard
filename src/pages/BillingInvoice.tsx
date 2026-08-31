@@ -22,16 +22,12 @@ const PRODUCTS: Record<string, Omit<Item,'id'|'ordQty'|'code'>> = {
   'Decoration Charges': { desc:'Decoration / Event Setup Charges', unit:'Job', rate:5000 },
 };
 
-/* ── Customer directory auto-fill by code ── */
-const CUSTOMERS: Record<string, { name:string; deliveryLocation:string }> = {
-  'CUST001': { name:'The Grand Wedding Co.',    deliveryLocation:'Whitefield, Bangalore' },
-  'CUST002': { name:'Lakeview Banquet Hall',    deliveryLocation:'Hebbal, Bangalore' },
-  'CUST003': { name:'Sri Krishna Events',       deliveryLocation:'Jayanagar, Bangalore' },
-  'CUST004': { name:'Orchid Decorators',        deliveryLocation:'Indiranagar, Bangalore' },
-  'CUST005': { name:'Misty Blooms',             deliveryLocation:'Wilson Garden, Bangalore' },
-};
+/* ── Customer directory auto-fill by code — add real customers here as you get them ── */
+const CUSTOMERS: Record<string, { name:string; deliveryLocation:string }> = {};
 
-const SAVED_INVOICES = flowerData.invoices.map(i => ({
+interface FlowerInvoice { no:string; client:string; taxable:number; gst:number; total:number; date:string; due:string; status:string; }
+
+const SAVED_INVOICES = (flowerData.invoices as FlowerInvoice[]).map(i => ({
   no: i.no, client: i.client, taxable: i.taxable, gst: i.gst, total: i.total,
   date: i.date, due: i.due, status: i.status as 'Paid'|'Unpaid'|'Overdue',
 }));
@@ -161,6 +157,9 @@ export default function BillingInvoice() {
           <table className="tbl w-full">
             <thead><tr><th>Bill No</th><th>Customer</th><th>Amount</th><th>Date</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
+              {saved.length === 0 && (
+                <tr><td colSpan={7} style={{textAlign:'center', padding:'32px 0', color:'var(--muted)', fontSize:13}}>No invoices yet — click "New Invoice" to create one.</td></tr>
+              )}
               {saved.map((r,i)=>(
                 <tr key={i}>
                   <td><strong>{r.no}</strong></td>

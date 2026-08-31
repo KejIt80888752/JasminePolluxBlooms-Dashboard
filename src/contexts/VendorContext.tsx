@@ -21,6 +21,8 @@ const INITIAL_VENDORS: Vendor[] = [
 interface VendorContextType {
   vendors: Vendor[];
   addVendor: (v: Omit<Vendor,'id'|'code'>) => void;
+  updateVendor: (id: number, v: Omit<Vendor,'id'|'code'>) => void;
+  deleteVendor: (id: number) => void;
   nextCode: () => string;
 }
 
@@ -35,8 +37,16 @@ export const VendorProvider = ({ children }: { children: ReactNode }) => {
     setVendors(prev => [...prev, { ...v, id: Date.now(), code: `JPB${String(prev.length + 1).padStart(5, '0')}` }]);
   };
 
+  const updateVendor = (id: number, v: Omit<Vendor,'id'|'code'>) => {
+    setVendors(prev => prev.map(x => x.id === id ? { ...x, ...v } : x));
+  };
+
+  const deleteVendor = (id: number) => {
+    setVendors(prev => prev.filter(x => x.id !== id));
+  };
+
   return (
-    <VendorContext.Provider value={{ vendors, addVendor, nextCode }}>
+    <VendorContext.Provider value={{ vendors, addVendor, updateVendor, deleteVendor, nextCode }}>
       {children}
     </VendorContext.Provider>
   );

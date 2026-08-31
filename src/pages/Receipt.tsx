@@ -7,10 +7,7 @@ type View = 'form' | 'list';
 
 interface SavedReceipt { vNo:string; receivedFrom:string; date:string; total:number; }
 
-const SAVED: SavedReceipt[] = [
-  { vNo:'RC-001', receivedFrom:'The Grand Wedding Co.', date:'28-Jul-2026', total:42500 },
-  { vNo:'RC-002', receivedFrom:'Lakeview Banquet Hall', date:'25-Jul-2026', total:68000 },
-];
+const SAVED: SavedReceipt[] = [];
 
 const fmt = (n:number) => n.toLocaleString('en-IN');
 function newItem(): Item { return { id:Date.now()+Math.random(), ref:'', desc:'', col3:'', amount:0 }; }
@@ -70,6 +67,9 @@ export default function Receipt() {
           <table className="tbl w-full">
             <thead><tr><th>V.No</th><th>Received From</th><th>Date</th><th>Amount</th><th>Action</th></tr></thead>
             <tbody>
+              {saved.length === 0 && (
+                <tr><td colSpan={5} style={{textAlign:'center', padding:'32px 0', color:'var(--muted)', fontSize:13}}>No receipts yet — click "New Receipt" to create one.</td></tr>
+              )}
               {saved.map((v,i)=>(
                 <tr key={i}>
                   <td><strong>{v.vNo}</strong></td>

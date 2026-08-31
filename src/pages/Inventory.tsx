@@ -112,6 +112,9 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={12} style={{textAlign:'center', padding:'32px 0', color:'var(--muted)', fontSize:13}}>No inventory yet — click "Add Item" or use Bulk Upload to get started.</td></tr>
+              )}
               {filtered.map(d=>(
                 <tr key={d.id}>
                   <td className="font-mono text-xs text-gray-500">{d.code}</td>

@@ -8,8 +8,8 @@ type View = 'form' | 'list';
 interface SavedVoucher { vNo:string; paidTo:string; date:string; total:number; }
 
 const SAVED: SavedVoucher[] = [
-  { vNo:'CV-001', paidTo:'Black Tulip Flowers Intl', date:'20-Jul-2026', total:16850 },
-  { vNo:'CV-002', paidTo:'Auto / Local Transport', date:'22-Jul-2026', total:850 },
+  { vNo:'CV-001', paidTo:'Misty Blooms', date:'21-Jun-2026', total:6560 },
+  { vNo:'CV-002', paidTo:'Black Tulip Flowers Intl', date:'20-Jul-2026', total:16850 },
 ];
 
 const fmt = (n:number) => n.toLocaleString('en-IN');

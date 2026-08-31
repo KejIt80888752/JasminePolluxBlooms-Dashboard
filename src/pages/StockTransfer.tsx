@@ -12,10 +12,7 @@ interface Transfer {
   location: string;
 }
 
-const INITIAL: Transfer[] = [
-  { id:1, code:'ANT-MED', name:'Anthurium Medium — Green', qty:40, receivedDate:'2026-07-20', transferDate:'2026-07-22', location:'Warehouse - 2' },
-  { id:2, code:'ROSE-RED', name:'Red Rose', qty:100, receivedDate:'2026-07-18', transferDate:'2026-07-21', location:'Hyderabad' },
-];
+const INITIAL: Transfer[] = [];
 
 const EMPTY = { code:'', name:'', qty:'', receivedDate:'', transferDate:'', location:LOCATIONS[0] };
 
@@ -51,6 +48,9 @@ export default function StockTransfer() {
           <table className="tbl w-full">
             <thead><tr><th>Code</th><th>Name</th><th>Quantity</th><th>Received Date</th><th>Transfer Date</th><th>Location</th></tr></thead>
             <tbody>
+              {data.length === 0 && (
+                <tr><td colSpan={6} style={{textAlign:'center', padding:'32px 0', color:'var(--muted)', fontSize:13}}>No transfers yet — click "Add Transfer" to record one.</td></tr>
+              )}
               {data.map(r=>(
                 <tr key={r.id}>
                   <td className="font-mono text-xs text-gray-500">{r.code}</td>

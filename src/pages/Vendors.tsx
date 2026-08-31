@@ -1,18 +1,31 @@
 import { useState } from 'react';
-import { Plus, Truck, X } from 'lucide-react';
-import { useVendors } from '../contexts/VendorContext';
+import { Plus, Truck, X, Edit2, Trash2 } from 'lucide-react';
+import { useVendors, type Vendor } from '../contexts/VendorContext';
 
 const EMPTY = { name:'', mobile:'', address:'', gst:'', pan:'', email:'', bankDetails:'' };
 
 export default function Vendors() {
-  const { vendors, addVendor, nextCode } = useVendors();
+  const { vendors, addVendor, updateVendor, deleteVendor, nextCode } = useVendors();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(EMPTY);
 
-  const handleAdd = () => {
+  const openAdd = () => { setEditingId(null); setForm(EMPTY); setOpen(true); };
+  const openEdit = (v: Vendor) => {
+    setEditingId(v.id);
+    setForm({ name:v.name, mobile:v.mobile, address:v.address, gst:v.gst, pan:v.pan, email:v.email, bankDetails:v.bankDetails });
+    setOpen(true);
+  };
+
+  const handleSave = () => {
     if (!form.name || !form.mobile) { alert('Enter Vendor Name and Mobile Number'); return; }
-    addVendor(form);
-    setOpen(false); setForm(EMPTY);
+    if (editingId !== null) updateVendor(editingId, form);
+    else addVendor(form);
+    setOpen(false); setForm(EMPTY); setEditingId(null);
+  };
+
+  const handleDelete = (v: Vendor) => {
+    if (confirm(`Delete vendor "${v.name}"?`)) deleteVendor(v.id);
   };
 
   return (
@@ -28,13 +41,13 @@ export default function Vendors() {
       </div>
 
       <div className="filter-bar mb-5">
-        <button className="btn-brand" onClick={()=>setOpen(true)}><Plus size={14}/> Add Vendor</button>
+        <button className="btn-brand" onClick={openAdd}><Plus size={14}/> Add Vendor</button>
       </div>
 
       <div className="card">
         <div className="overflow-x-auto">
           <table className="tbl w-full">
-            <thead><tr><th>Vendor Code</th><th>Name</th><th>Mobile</th><th>Address</th><th>GST</th><th>PAN</th><th>Email</th><th>Bank Details</th></tr></thead>
+            <thead><tr><th>Vendor Code</th><th>Name</th><th>Mobile</th><th>Address</th><th>GST</th><th>PAN</th><th>Email</th><th>Bank Details</th><th>Action</th></tr></thead>
             <tbody>
               {vendors.map(v=>(
                 <tr key={v.id}>
@@ -46,6 +59,12 @@ export default function Vendors() {
                   <td className="text-xs font-mono">{v.pan}</td>
                   <td className="text-xs">{v.email}</td>
                   <td className="text-xs">{v.bankDetails}</td>
+                  <td>
+                    <div style={{display:'flex',gap:5}}>
+                      <button className="btn-outline btn-sm" style={{display:'flex',alignItems:'center',gap:3}} onClick={()=>openEdit(v)}><Edit2 size={11}/>Edit</button>
+                      <button className="btn-outline btn-sm" style={{display:'flex',alignItems:'center',gap:3,color:'#ef4444'}} onClick={()=>handleDelete(v)}><Trash2 size={11}/>Delete</button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -57,7 +76,7 @@ export default function Vendors() {
         <div className="modal-overlay" onClick={()=>setOpen(false)}>
           <div className="modal-box" onClick={e=>e.stopPropagation()}>
             <div className="modal-head">
-              <div className="modal-title">Add Vendor — {nextCode()}</div>
+              <div className="modal-title">{editingId !== null ? 'Edit Vendor' : `Add Vendor — ${nextCode()}`}</div>
               <button className="text-gray-400 hover:text-gray-700 p-1" onClick={()=>setOpen(false)}><X size={16}/></button>
             </div>
             <div className="modal-body">
@@ -75,7 +94,7 @@ export default function Vendors() {
             </div>
             <div className="modal-foot">
               <button className="btn-outline" onClick={()=>setOpen(false)}>Cancel</button>
-              <button className="btn-brand" onClick={handleAdd}>Add Vendor</button>
+              <button className="btn-brand" onClick={handleSave}>{editingId !== null ? 'Save Changes' : 'Add Vendor'}</button>
             </div>
           </div>
         </div>
