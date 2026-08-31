@@ -1,8 +1,8 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Plus, MessageCircle, Trash2, FileText, CheckCircle, AlertCircle, Download, AlertTriangle } from 'lucide-react';
 import InvoicePDF from '../components/InvoicePDF';
-import flowerData from '../data/flowerData.json';
 import { useInventory } from '../contexts/InventoryContext';
+import { supabase } from '../lib/supabaseClient';
 
 type Item = { id:number; code:string; desc:string; ordQty:number; unit:string; rate:number; };
 type View = 'form' | 'list';
@@ -25,12 +25,7 @@ const PRODUCTS: Record<string, Omit<Item,'id'|'ordQty'|'code'>> = {
 /* ── Customer directory auto-fill by code — add real customers here as you get them ── */
 const CUSTOMERS: Record<string, { name:string; deliveryLocation:string }> = {};
 
-interface FlowerInvoice { no:string; client:string; taxable:number; gst:number; total:number; date:string; due:string; status:string; }
-
-const SAVED_INVOICES = (flowerData.invoices as FlowerInvoice[]).map(i => ({
-  no: i.no, client: i.client, taxable: i.taxable, gst: i.gst, total: i.total,
-  date: i.date, due: i.due, status: i.status as 'Paid'|'Unpaid'|'Overdue',
-}));
+interface SavedInvoice { id:string; no:string; client:string; taxable:number; total:number; date:string; due:string; status:'Paid'|'Unpaid'|'Overdue'; }
 
 const sc: Record<string,string> = { Paid:'badge-green', Unpaid:'badge-yellow', Overdue:'badge-red' };
 const fmt  = (n:number) => n.toLocaleString('en-IN');
@@ -48,11 +43,21 @@ export default function BillingInvoice() {
   const [view, setView]   = useState<View>('list');
   const [docType, setDocType] = useState<DocType>('orderform');
   const [items, setItems] = useState<Item[]>([newItem()]);
-  const [saved, setSaved] = useState(SAVED_INVOICES);
+  const [saved, setSaved] = useState<SavedInvoice[]>([]);
   const [showPDF, setShowPDF] = useState(false);
   const [pdfInvoiceData, setPdfInvoiceData] = useState<any>(null);
 
-  const [billNo,   setBillNo]   = useState(`JPB-2026-${String(SAVED_INVOICES.length+1).padStart(3,'0')}`);
+  const refreshInvoices = async () => {
+    const { data, error } = await supabase.from('invoices').select('*').order('created_at', { ascending: false });
+    if (!error && data) setSaved((data as any[]).map(r => ({
+      id: r.id, no: r.bill_no ?? '', client: r.client ?? '', taxable: r.taxable ?? 0,
+      total: r.total ?? 0, date: r.date ?? '', due: r.due ?? '', status: (r.status ?? 'Unpaid') as SavedInvoice['status'],
+    })));
+  };
+
+  useEffect(() => { refreshInvoices(); }, []);
+
+  const [billNo,   setBillNo]   = useState(`JPB-2026-${String(saved.length+1).padStart(3,'0')}`);
   const [invDate,  setInvDate]  = useState(new Date().toISOString().slice(0,10));
   const [dDate,    setDDate]    = useState(new Date().toISOString().slice(0,10));
   const [reference,setReference]= useState('');
@@ -98,10 +103,18 @@ export default function BillingInvoice() {
   const delItem = (id:number) => setItems(p=>p.filter(it=>it.id!==id));
   const clearForm = () => { setItems([newItem()]); setCustCode(''); setParty(''); setDeliveryLoc(''); setReference(''); setTransport(0); };
 
-  const saveInvoice = () => {
+  const saveInvoice = async () => {
     if(!party){ alert('Enter Customer Name'); return; }
     if(hasStockError){ alert('Cannot save — one or more items exceed available stock.'); return; }
-    setSaved(p=>[{ no:billNo, client:party, taxable:Math.round(itemsTotal), gst:0, total:Math.round(grandTotal), date:new Date(invDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}).replace(/ /g,'-'), due:'7 days', status:'Unpaid' },...p]);
+    const { error } = await supabase.from('invoices').insert({
+      bill_no: billNo, doc_type: docType, client: party, delivery_location: deliveryLoc, reference,
+      taxable: Math.round(itemsTotal), transport, total: Math.round(grandTotal),
+      date: new Date(invDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}).replace(/ /g,'-'),
+      d_date: dDate, due: '7 days', status: 'Unpaid',
+      items: items.filter(it=>it.desc).map(it=>({ desc:it.desc, ordQty:it.ordQty, unit:it.unit, rate:it.rate })),
+    });
+    if (error) { alert(`Could not save invoice: ${error.message}`); return; }
+    await refreshInvoices();
     setView('list');
     clearForm();
     setBillNo(`JPB-2026-${String(saved.length+2).padStart(3,'0')}`);

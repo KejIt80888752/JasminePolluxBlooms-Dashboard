@@ -7,7 +7,7 @@ const EMPTY = { name:'', mobile:'', address:'', gst:'', pan:'', email:'', bankDe
 export default function Vendors() {
   const { vendors, addVendor, updateVendor, deleteVendor, nextCode } = useVendors();
   const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY);
 
   const openAdd = () => { setEditingId(null); setForm(EMPTY); setOpen(true); };
@@ -17,15 +17,15 @@ export default function Vendors() {
     setOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.mobile) { alert('Enter Vendor Name and Mobile Number'); return; }
-    if (editingId !== null) updateVendor(editingId, form);
-    else addVendor(form);
+    if (editingId !== null) await updateVendor(editingId, form);
+    else await addVendor(form);
     setOpen(false); setForm(EMPTY); setEditingId(null);
   };
 
-  const handleDelete = (v: Vendor) => {
-    if (confirm(`Delete vendor "${v.name}"?`)) deleteVendor(v.id);
+  const handleDelete = async (v: Vendor) => {
+    if (confirm(`Delete vendor "${v.name}"?`)) await deleteVendor(v.id);
   };
 
   return (

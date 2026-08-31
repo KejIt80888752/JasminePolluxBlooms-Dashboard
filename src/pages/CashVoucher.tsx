@@ -1,29 +1,36 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Plus, Trash2, FileText, Download, Wallet } from 'lucide-react';
 import VoucherPDF, { type VoucherRow } from '../components/VoucherPDF';
+import { supabase } from '../lib/supabaseClient';
 
 type Item = VoucherRow & { id:number };
 type View = 'form' | 'list';
 
-interface SavedVoucher { vNo:string; paidTo:string; date:string; total:number; }
-
-const SAVED: SavedVoucher[] = [
-  { vNo:'CV-001', paidTo:'Misty Blooms', date:'21-Jun-2026', total:6560 },
-  { vNo:'CV-002', paidTo:'Black Tulip Flowers Intl', date:'20-Jul-2026', total:16850 },
-];
+interface SavedVoucher { id:string; vNo:string; paidTo:string; date:string; total:number; rows:VoucherRow[]; }
 
 const fmt = (n:number) => n.toLocaleString('en-IN');
 function newItem(): Item { return { id:Date.now()+Math.random(), ref:'', desc:'', col3:'', amount:0 }; }
 
 export default function CashVoucher() {
   const [view, setView] = useState<View>('list');
-  const [saved, setSaved] = useState(SAVED);
+  const [saved, setSaved] = useState<SavedVoucher[]>([]);
   const [items, setItems] = useState<Item[]>([newItem()]);
-  const [vNo, setVNo] = useState(`CV-${String(SAVED.length+1).padStart(3,'0')}`);
+  const [vNo, setVNo] = useState('CV-001');
   const [date, setDate] = useState(new Date().toISOString().slice(0,10));
   const [paidTo, setPaidTo] = useState('');
   const [showPDF, setShowPDF] = useState(false);
   const [pdfData, setPdfData] = useState<any>(null);
+
+  const refresh = async () => {
+    const { data, error } = await supabase.from('cash_vouchers').select('*').order('created_at', { ascending: false });
+    if (!error && data) {
+      const rows = (data as any[]).map(r => ({ id:r.id, vNo:r.v_no ?? '', paidTo:r.paid_to ?? '', date:r.date ?? '', total:r.total ?? 0, rows: r.rows ?? [] }));
+      setSaved(rows);
+      setVNo(`CV-${String(rows.length+1).padStart(3,'0')}`);
+    }
+  };
+
+  useEffect(() => { refresh(); }, []);
 
   const total = items.reduce((s,it)=>s+(it.amount||0),0);
   const updateItem = (id:number, field:keyof Item, val:string|number) =>
@@ -40,14 +47,18 @@ export default function CashVoucher() {
 
   const openPDF = () => { setPdfData(buildData()); setShowPDF(true); };
   const openPDFFromList = (v: SavedVoucher) => {
-    setPdfData({ title:'CASH PAYMENT VOUCHER', vNo:v.vNo, date:v.date, partyLabel:'Paid To', partyName:v.paidTo, col3Label:'Account Head', rows:[{ref:'',desc:'Payment',col3:'',amount:v.total}] });
+    setPdfData({ title:'CASH PAYMENT VOUCHER', vNo:v.vNo, date:v.date, partyLabel:'Paid To', partyName:v.paidTo, col3Label:'Account Head', rows: v.rows.length ? v.rows : [{ref:'',desc:'Payment',col3:'',amount:v.total}] });
     setShowPDF(true);
   };
-  const saveVoucher = () => {
+  const saveVoucher = async () => {
     if(!paidTo){ alert('Enter Paid To'); return; }
-    setSaved(p=>[{ vNo, paidTo, date: new Date(date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), total },...p]);
+    const rows = items.filter(it=>it.desc||it.ref).map(({id,...rest})=>rest);
+    const { error } = await supabase.from('cash_vouchers').insert({
+      v_no: vNo, paid_to: paidTo, date: new Date(date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), total, rows,
+    });
+    if (error) { alert(`Could not save voucher: ${error.message}`); return; }
+    await refresh();
     setView('list'); clearForm();
-    setVNo(`CV-${String(saved.length+2).padStart(3,'0')}`);
   };
 
   if(showPDF && pdfData) return <VoucherPDF data={pdfData} onClose={()=>setShowPDF(false)}/>;
@@ -70,6 +81,9 @@ export default function CashVoucher() {
           <table className="tbl w-full">
             <thead><tr><th>V.No</th><th>Paid To</th><th>Date</th><th>Amount</th><th>Action</th></tr></thead>
             <tbody>
+              {saved.length === 0 && (
+                <tr><td colSpan={5} style={{textAlign:'center', padding:'32px 0', color:'var(--muted)', fontSize:13}}>No vouchers yet — click "New Voucher" to create one.</td></tr>
+              )}
               {saved.map((v,i)=>(
                 <tr key={i}>
                   <td><strong>{v.vNo}</strong></td>

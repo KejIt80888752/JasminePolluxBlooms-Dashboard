@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, UserPlus, Phone, Handshake } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
-interface Lead { name:string; company:string; phone:string; source:string; interest:string; date:string; status:string; }
+interface Lead { id:string; name:string; company:string; phone:string; source:string; interest:string; date:string; status:string; }
 
 const sc: Record<string, string> = { New:'badge-blue', Contacted:'badge-yellow', Converted:'badge-green' };
 const EMPTY = { name:'', company:'', phone:'', email:'', source:'Walk-in', interest:'Wedding Decor', notes:'' };
@@ -11,13 +12,28 @@ export default function Leads() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
 
+  const refresh = async () => {
+    const { data: rows, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+    if (!error && rows) setData((rows as any[]).map(r => ({
+      id:r.id, name:r.name ?? '', company:r.company ?? '', phone:r.phone ?? '',
+      source:r.source ?? '', interest:r.interest ?? '', date:r.date ?? '', status:r.status ?? 'New',
+    })));
+  };
+
+  useEffect(() => { refresh(); }, []);
+
   const newCount = data.filter(d=>d.status==='New').length;
   const contactedCount = data.filter(d=>d.status==='Contacted').length;
   const convertedCount = data.filter(d=>d.status==='Converted').length;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.name) { alert('Enter lead name'); return; }
-    setData(prev => [{ name:form.name, company:form.company, phone:form.phone, source:form.source, interest:form.interest, date: new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), status:'New' }, ...prev]);
+    const { error } = await supabase.from('leads').insert({
+      name: form.name, company: form.company, phone: form.phone, source: form.source, interest: form.interest,
+      date: new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), status: 'New',
+    });
+    if (error) { alert(`Could not save lead: ${error.message}`); return; }
+    await refresh();
     setOpen(false); setForm(EMPTY);
   };
 

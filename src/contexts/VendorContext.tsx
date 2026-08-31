@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 export interface Vendor {
-  id: number;
+  id: string;
   code: string;
   name: string;
   mobile: string;
@@ -12,41 +13,66 @@ export interface Vendor {
   bankDetails: string;
 }
 
-const INITIAL_VENDORS: Vendor[] = [
-  { id:1, code:'JPB00001', name:'Black Tulip Flowers Intl', mobile:'+91 89706 36427', address:'#2&3, Shree AMM Residency, Dr. Marigowda Road, Hosur Main Road, Bengaluru', gst:'29XXXXXXXXXXXXX', pan:'AAXXX0000X', email:'sales.btfi@btfgroup.com', bankDetails:'ICICI Bank — A/c 000000000000' },
-  { id:2, code:'JPB00002', name:'Misty Blooms', mobile:'+91 94833 96546', address:'230/4, 12th Cross Road, Wilson Garden, Bangalore', gst:'29XXXXXXXXXXXXX', pan:'AAXXX0000X', email:'accounts@mistybloom.in', bankDetails:'ICICI Bank — A/c 343605000393' },
-  { id:3, code:'JPB00003', name:'Amazis Flora', mobile:'+91 93431 78474', address:'Hosur Main Road, Bengaluru', gst:'29XXXXXXXXXXXXX', pan:'AAXXX0000X', email:'amazisflora@example.com', bankDetails:'—' },
-];
+type Row = {
+  id: string; code: string; name: string; mobile: string | null; address: string | null;
+  gst: string | null; pan: string | null; email: string | null; bank_details: string | null;
+};
+
+const fromRow = (r: Row): Vendor => ({
+  id: r.id, code: r.code, name: r.name, mobile: r.mobile ?? '', address: r.address ?? '',
+  gst: r.gst ?? '', pan: r.pan ?? '', email: r.email ?? '', bankDetails: r.bank_details ?? '',
+});
 
 interface VendorContextType {
   vendors: Vendor[];
-  addVendor: (v: Omit<Vendor,'id'|'code'>) => void;
-  updateVendor: (id: number, v: Omit<Vendor,'id'|'code'>) => void;
-  deleteVendor: (id: number) => void;
+  loading: boolean;
+  addVendor: (v: Omit<Vendor,'id'|'code'>) => Promise<void>;
+  updateVendor: (id: string, v: Omit<Vendor,'id'|'code'>) => Promise<void>;
+  deleteVendor: (id: string) => Promise<void>;
   nextCode: () => string;
 }
 
 const VendorContext = createContext<VendorContextType | null>(null);
 
 export const VendorProvider = ({ children }: { children: ReactNode }) => {
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = async () => {
+    const { data, error } = await supabase.from('vendors').select('*').order('created_at', { ascending: true });
+    if (!error && data) setVendors((data as Row[]).map(fromRow));
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
 
   const nextCode = () => `JPB${String(vendors.length + 1).padStart(5, '0')}`;
 
-  const addVendor = (v: Omit<Vendor,'id'|'code'>) => {
-    setVendors(prev => [...prev, { ...v, id: Date.now(), code: `JPB${String(prev.length + 1).padStart(5, '0')}` }]);
+  const addVendor = async (v: Omit<Vendor,'id'|'code'>) => {
+    const code = nextCode();
+    const { error } = await supabase.from('vendors').insert({
+      code, name: v.name, mobile: v.mobile, address: v.address, gst: v.gst, pan: v.pan, email: v.email, bank_details: v.bankDetails,
+    });
+    if (error) { alert(`Could not save vendor: ${error.message}`); return; }
+    await refresh();
   };
 
-  const updateVendor = (id: number, v: Omit<Vendor,'id'|'code'>) => {
-    setVendors(prev => prev.map(x => x.id === id ? { ...x, ...v } : x));
+  const updateVendor = async (id: string, v: Omit<Vendor,'id'|'code'>) => {
+    const { error } = await supabase.from('vendors').update({
+      name: v.name, mobile: v.mobile, address: v.address, gst: v.gst, pan: v.pan, email: v.email, bank_details: v.bankDetails,
+    }).eq('id', id);
+    if (error) { alert(`Could not update vendor: ${error.message}`); return; }
+    await refresh();
   };
 
-  const deleteVendor = (id: number) => {
-    setVendors(prev => prev.filter(x => x.id !== id));
+  const deleteVendor = async (id: string) => {
+    const { error } = await supabase.from('vendors').delete().eq('id', id);
+    if (error) { alert(`Could not delete vendor: ${error.message}`); return; }
+    await refresh();
   };
 
   return (
-    <VendorContext.Provider value={{ vendors, addVendor, updateVendor, deleteVendor, nextCode }}>
+    <VendorContext.Provider value={{ vendors, loading, addVendor, updateVendor, deleteVendor, nextCode }}>
       {children}
     </VendorContext.Provider>
   );

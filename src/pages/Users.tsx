@@ -1,11 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
-interface UserRow { id:number; name:string; email:string; role:string; lastLogin:string; status:string; }
-
-const INITIAL_USERS: UserRow[] = [
-  { id: 1, name: 'Jasmine', email: 'jasminepolluxblooms@gmail.com', role: 'Admin', lastLogin: '—', status: 'Active' },
-];
+interface UserRow { id:string; name:string; email:string; role:string; lastLogin:string; status:string; }
 
 const roleBadge: Record<string, string> = {
   Admin: 'badge badge-red',
@@ -21,21 +18,35 @@ const statusBadge: Record<string, string> = {
 };
 
 export default function Users() {
-  const [users, setUsers] = useState<UserRow[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', role: '', status: 'Active' });
+
+  const refresh = async () => {
+    const { data, error } = await supabase.from('app_users').select('*').order('created_at', { ascending: true });
+    if (!error && data) setUsers((data as any[]).map(r => ({
+      id:r.id, name:r.name ?? '', email:r.email ?? '', role:r.role ?? '', lastLogin:r.last_login ?? '—', status:r.status ?? 'Active',
+    })));
+  };
+
+  useEffect(() => { refresh(); }, []);
 
   const activeCount = users.filter(u=>u.status==='Active').length;
   const adminCount = users.filter(u=>u.role==='Admin').length;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.name || !form.email || !form.role) { alert('Enter Name, Email and Role'); return; }
-    setUsers(prev => [...prev, { id: Date.now(), name: form.name, email: form.email, role: form.role, lastLogin: '—', status: form.status || 'Active' }]);
+    const { error } = await supabase.from('app_users').insert({ name: form.name, email: form.email, role: form.role, status: form.status || 'Active' });
+    if (error) { alert(`Could not save user: ${error.message}`); return; }
+    await refresh();
     setModalOpen(false); setForm({ name:'', email:'', phone:'', role:'', status:'Active' });
   };
 
-  const handleDelete = (u: UserRow) => {
-    if (confirm(`Remove user "${u.name}"?`)) setUsers(prev => prev.filter(x => x.id !== u.id));
+  const handleDelete = async (u: UserRow) => {
+    if (!confirm(`Remove user "${u.name}"?`)) return;
+    const { error } = await supabase.from('app_users').delete().eq('id', u.id);
+    if (error) { alert(`Could not delete user: ${error.message}`); return; }
+    await refresh();
   };
 
   return (

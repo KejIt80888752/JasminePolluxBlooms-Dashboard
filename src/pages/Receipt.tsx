@@ -1,26 +1,36 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Plus, Trash2, FileText, Download, Receipt as ReceiptIcon } from 'lucide-react';
 import VoucherPDF, { type VoucherRow } from '../components/VoucherPDF';
+import { supabase } from '../lib/supabaseClient';
 
 type Item = VoucherRow & { id:number };
 type View = 'form' | 'list';
 
-interface SavedReceipt { vNo:string; receivedFrom:string; date:string; total:number; }
-
-const SAVED: SavedReceipt[] = [];
+interface SavedReceipt { id:string; vNo:string; receivedFrom:string; date:string; total:number; rows:VoucherRow[]; }
 
 const fmt = (n:number) => n.toLocaleString('en-IN');
 function newItem(): Item { return { id:Date.now()+Math.random(), ref:'', desc:'', col3:'', amount:0 }; }
 
 export default function Receipt() {
   const [view, setView] = useState<View>('list');
-  const [saved, setSaved] = useState(SAVED);
+  const [saved, setSaved] = useState<SavedReceipt[]>([]);
   const [items, setItems] = useState<Item[]>([newItem()]);
-  const [vNo, setVNo] = useState(`RC-${String(SAVED.length+1).padStart(3,'0')}`);
+  const [vNo, setVNo] = useState('RC-001');
   const [date, setDate] = useState(new Date().toISOString().slice(0,10));
   const [receivedFrom, setReceivedFrom] = useState('');
   const [showPDF, setShowPDF] = useState(false);
   const [pdfData, setPdfData] = useState<any>(null);
+
+  const refresh = async () => {
+    const { data, error } = await supabase.from('receipts').select('*').order('created_at', { ascending: false });
+    if (!error && data) {
+      const rows = (data as any[]).map(r => ({ id:r.id, vNo:r.v_no ?? '', receivedFrom:r.received_from ?? '', date:r.date ?? '', total:r.total ?? 0, rows: r.rows ?? [] }));
+      setSaved(rows);
+      setVNo(`RC-${String(rows.length+1).padStart(3,'0')}`);
+    }
+  };
+
+  useEffect(() => { refresh(); }, []);
 
   const total = items.reduce((s,it)=>s+(it.amount||0),0);
   const updateItem = (id:number, field:keyof Item, val:string|number) =>
@@ -37,14 +47,18 @@ export default function Receipt() {
 
   const openPDF = () => { setPdfData(buildData()); setShowPDF(true); };
   const openPDFFromList = (v: SavedReceipt) => {
-    setPdfData({ title:'RECEIPT', vNo:v.vNo, date:v.date, partyLabel:'Received From', partyName:v.receivedFrom, col3Label:'Mode of Receipt', rows:[{ref:'',desc:'Payment received',col3:'UPI',amount:v.total}] });
+    setPdfData({ title:'RECEIPT', vNo:v.vNo, date:v.date, partyLabel:'Received From', partyName:v.receivedFrom, col3Label:'Mode of Receipt', rows: v.rows.length ? v.rows : [{ref:'',desc:'Payment received',col3:'UPI',amount:v.total}] });
     setShowPDF(true);
   };
-  const saveReceipt = () => {
+  const saveReceipt = async () => {
     if(!receivedFrom){ alert('Enter Received From'); return; }
-    setSaved(p=>[{ vNo, receivedFrom, date: new Date(date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), total },...p]);
+    const rows = items.filter(it=>it.desc||it.ref).map(({id,...rest})=>rest);
+    const { error } = await supabase.from('receipts').insert({
+      v_no: vNo, received_from: receivedFrom, date: new Date(date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}), total, rows,
+    });
+    if (error) { alert(`Could not save receipt: ${error.message}`); return; }
+    await refresh();
     setView('list'); clearForm();
-    setVNo(`RC-${String(saved.length+2).padStart(3,'0')}`);
   };
 
   if(showPDF && pdfData) return <VoucherPDF data={pdfData} onClose={()=>setShowPDF(false)}/>;

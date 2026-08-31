@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { supabase } from '../lib/supabaseClient';
 
 export interface InventoryItem {
-  id: number;
+  id: string;
   code: string;
   colour: string;
   category: string;
@@ -15,32 +16,64 @@ export interface InventoryItem {
   status: 'OK' | 'Low Stock' | 'Out of Stock';
 }
 
+type Row = {
+  id: string; code: string | null; colour: string | null; category: string | null; variety: string | null;
+  qty: number; unit: string | null; rate: number; location: string | null; bill_no: string | null;
+  vendor_name: string | null; status: string | null;
+};
+
 export const LOCATIONS = ['Warehouse - 1', 'Warehouse - 2', 'Warehouse - 3', 'Hyderabad'];
 
 export const computeStatus = (qty: number): InventoryItem['status'] =>
   qty === 0 ? 'Out of Stock' : qty < 20 ? 'Low Stock' : 'OK';
 
-/* Add real stock via "Add Item" or the Excel bulk upload — no placeholder data. */
-const INITIAL_DATA: InventoryItem[] = [];
+const fromRow = (r: Row): InventoryItem => ({
+  id: r.id, code: r.code ?? '', colour: r.colour ?? '', category: r.category ?? '', variety: r.variety ?? '',
+  qty: r.qty, unit: r.unit ?? '', rate: r.rate, location: r.location ?? '', billNo: r.bill_no ?? '',
+  vendorName: r.vendor_name ?? '', status: (r.status as InventoryItem['status']) ?? computeStatus(r.qty),
+});
 
 interface InventoryContextType {
   items: InventoryItem[];
-  addItem: (item: Omit<InventoryItem,'id'|'status'>) => void;
-  addItems: (items: Omit<InventoryItem,'id'|'status'>[]) => void;
+  loading: boolean;
+  addItem: (item: Omit<InventoryItem,'id'|'status'>) => Promise<void>;
+  addItems: (items: Omit<InventoryItem,'id'|'status'>[]) => Promise<void>;
   findByCodeOrColour: (query: string) => InventoryItem | undefined;
 }
 
 const InventoryContext = createContext<InventoryContextType | null>(null);
 
 export const InventoryProvider = ({ children }: { children: ReactNode }) => {
-  const [items, setItems] = useState<InventoryItem[]>(INITIAL_DATA);
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addItem = (item: Omit<InventoryItem,'id'|'status'>) => {
-    setItems(prev => [...prev, { ...item, id: Date.now()+Math.random(), status: computeStatus(item.qty) }]);
+  const refresh = async () => {
+    const { data, error } = await supabase.from('inventory_items').select('*').order('created_at', { ascending: true });
+    if (!error && data) setItems((data as Row[]).map(fromRow));
+    setLoading(false);
   };
 
-  const addItems = (newItems: Omit<InventoryItem,'id'|'status'>[]) => {
-    setItems(prev => [...prev, ...newItems.map((it,i) => ({ ...it, id: Date.now()+Math.random()+i, status: computeStatus(it.qty) }))]);
+  useEffect(() => { refresh(); }, []);
+
+  const addItem = async (item: Omit<InventoryItem,'id'|'status'>) => {
+    const { error } = await supabase.from('inventory_items').insert({
+      code: item.code, colour: item.colour, category: item.category, variety: item.variety, qty: item.qty,
+      unit: item.unit, rate: item.rate, location: item.location, bill_no: item.billNo, vendor_name: item.vendorName,
+      status: computeStatus(item.qty),
+    });
+    if (error) { alert(`Could not save item: ${error.message}`); return; }
+    await refresh();
+  };
+
+  const addItems = async (newItems: Omit<InventoryItem,'id'|'status'>[]) => {
+    const rows = newItems.map(it => ({
+      code: it.code, colour: it.colour, category: it.category, variety: it.variety, qty: it.qty,
+      unit: it.unit, rate: it.rate, location: it.location, bill_no: it.billNo, vendor_name: it.vendorName,
+      status: computeStatus(it.qty),
+    }));
+    const { error } = await supabase.from('inventory_items').insert(rows);
+    if (error) { alert(`Could not import items: ${error.message}`); return; }
+    await refresh();
   };
 
   const findByCodeOrColour = (query: string) => {
@@ -50,7 +83,7 @@ export const InventoryProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <InventoryContext.Provider value={{ items, addItem, addItems, findByCodeOrColour }}>
+    <InventoryContext.Provider value={{ items, loading, addItem, addItems, findByCodeOrColour }}>
       {children}
     </InventoryContext.Provider>
   );

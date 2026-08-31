@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, ArrowLeftRight, X } from 'lucide-react';
 import { LOCATIONS } from '../contexts/InventoryContext';
+import { supabase } from '../lib/supabaseClient';
 
 interface Transfer {
-  id: number;
+  id: string;
   code: string;
   name: string;
   qty: number;
@@ -12,18 +13,31 @@ interface Transfer {
   location: string;
 }
 
-const INITIAL: Transfer[] = [];
-
 const EMPTY = { code:'', name:'', qty:'', receivedDate:'', transferDate:'', location:LOCATIONS[0] };
 
 export default function StockTransfer() {
-  const [data, setData] = useState<Transfer[]>(INITIAL);
+  const [data, setData] = useState<Transfer[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string,string>>(EMPTY);
 
-  const handleAdd = () => {
+  const refresh = async () => {
+    const { data: rows, error } = await supabase.from('stock_transfers').select('*').order('created_at', { ascending: true });
+    if (!error && rows) setData(rows.map((r:any) => ({
+      id:r.id, code:r.code ?? '', name:r.name ?? '', qty:r.qty ?? 0,
+      receivedDate:r.received_date ?? '', transferDate:r.transfer_date ?? '', location:r.location ?? '',
+    })));
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleAdd = async () => {
     if (!form.code || !form.name) { alert('Enter Code and Name'); return; }
-    setData(prev => [...prev, { id:Date.now(), code:form.code, name:form.name, qty:parseInt(form.qty)||0, receivedDate:form.receivedDate, transferDate:form.transferDate, location:form.location }]);
+    const { error } = await supabase.from('stock_transfers').insert({
+      code: form.code, name: form.name, qty: parseInt(form.qty)||0,
+      received_date: form.receivedDate || null, transfer_date: form.transferDate || null, location: form.location,
+    });
+    if (error) { alert(`Could not save transfer: ${error.message}`); return; }
+    await refresh();
     setOpen(false); setForm(EMPTY);
   };
 
